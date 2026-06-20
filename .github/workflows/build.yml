@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    name: Build Debug APK
+    name: Build Release APK
     runs-on: ubuntu-latest
 
     steps:
@@ -26,7 +26,7 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Bootstrap Android scaffold via flutter create
+      - name: Bootstrap Android scaffold
         run: |
           flutter create \
             --platforms=android \
@@ -41,12 +41,81 @@ jobs:
       - name: Get Flutter dependencies
         run: flutter pub get
 
-      - name: Build Debug APK
-        run: flutter build apk --debug
+      - name: Install icon tools
+        run: |
+          sudo apt-get install -y fonts-dejavu-core
+          pip install pillow --quiet
 
-      - name: Upload APK artifact
+      - name: Generate App Icon
+        run: |
+          python3 << 'PYEOF'
+          from PIL import Image, ImageDraw, ImageFont
+          import os
+
+          SIZE = 1024
+          img = Image.new('RGBA', (SIZE, SIZE), (0, 0, 0, 0))
+          draw = ImageDraw.Draw(img)
+
+          # Background hijau rounded
+          draw.rounded_rectangle(
+              [0, 0, SIZE, SIZE],
+              radius=220,
+              fill=(0, 136, 13, 255)
+          )
+
+          # Lingkaran putih di tengah
+          cx, cy = SIZE // 2, SIZE // 2
+          cr = SIZE // 3
+          draw.ellipse(
+              [cx - cr, cy - cr, cx + cr, cy + cr],
+              fill=(255, 255, 255, 245)
+          )
+
+          # Teks "GF" warna hijau
+          font_paths = [
+              "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+              "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+              "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+          ]
+          font = None
+          for p in font_paths:
+              if os.path.exists(p):
+                  try:
+                      font = ImageFont.truetype(p, 260)
+                      break
+                  except Exception:
+                      pass
+          if font is None:
+              font = ImageFont.load_default()
+
+          text = "GF"
+          bbox = draw.textbbox((0, 0), text, font=font)
+          tw = bbox[2] - bbox[0]
+          th = bbox[3] - bbox[1]
+          draw.text(
+              ((SIZE - tw) // 2 - bbox[0], (SIZE - th) // 2 - bbox[1]),
+              text,
+              fill=(0, 100, 8, 255),
+              font=font
+          )
+
+          os.makedirs('assets/icon', exist_ok=True)
+          img.save('assets/icon/icon.png')
+          print('Icon berhasil dibuat: assets/icon/icon.png')
+          PYEOF
+
+      - name: Generate Launcher Icons
+        run: dart run flutter_launcher_icons
+
+      - name: Generate Splash Screen
+        run: dart run flutter_native_splash:create
+
+      - name: Build Release APK
+        run: flutter build apk --release
+
+      - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: gocar-finance-debug
-          path: build/app/outputs/flutter-apk/app-debug.apk
-          retention-days: 7
+          name: GocarFinance-v${{ github.run_number }}
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30
