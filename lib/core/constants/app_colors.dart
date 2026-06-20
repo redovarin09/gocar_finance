@@ -26,4 +26,5 @@ abstract final class AppColors {
 
   // Lain
   static const Color divider = Color(0xFFE0E0E0);
+  static const Color shadow = Color(0x1A000000);
 }
