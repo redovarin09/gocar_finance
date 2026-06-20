@@ -1,0 +1,18 @@
+# Dart & Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+pubspec.lock
+
+# Android scaffold (di-generate oleh CI)
+android/
+gradlew
+gradlew.bat
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
