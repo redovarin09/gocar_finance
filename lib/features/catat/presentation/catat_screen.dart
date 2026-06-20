@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_text_styles.dart';
+import 'widgets/form_pemasukan.dart';
+import 'widgets/form_pengeluaran.dart';
 
 class CatatScreen extends StatelessWidget {
   const CatatScreen({super.key});
@@ -11,21 +12,27 @@ class CatatScreen extends StatelessWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Catat'),
+          title: const Text('Catat Transaksi'),
           bottom: const TabBar(
             labelColor: AppColors.primary,
             unselectedLabelColor: AppColors.textSecondary,
             indicatorColor: AppColors.primary,
             tabs: [
-              Tab(icon: Icon(Icons.add_circle_outline_rounded), text: 'Pemasukan'),
-              Tab(icon: Icon(Icons.remove_circle_outline_rounded), text: 'Pengeluaran'),
+              Tab(
+                icon: Icon(Icons.add_circle_outline_rounded),
+                text: 'Pemasukan',
+              ),
+              Tab(
+                icon: Icon(Icons.remove_circle_outline_rounded),
+                text: 'Pengeluaran',
+              ),
             ],
           ),
         ),
         body: const TabBarView(
           children: [
-            Center(child: Text('Form Trip — Coming soon', style: AppTextStyles.bodySecondary)),
-            Center(child: Text('Form Pengeluaran — Coming soon', style: AppTextStyles.bodySecondary)),
+            FormPemasukan(),
+            FormPengeluaran(),
           ],
         ),
       ),
