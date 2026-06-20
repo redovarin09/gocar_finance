@@ -1,64 +1,83 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
-import '../../../core/utils/currency_formatter.dart';
+import '../../../shared/providers/app_providers.dart';
+import 'widgets/dashboard_widgets.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
+  static String _tanggalHariIni() {
+    final now = DateTime.now();
+    const hari = [
+      'Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'
+    ];
+    const bulan = [
+      '','Jan','Feb','Mar','Apr','Mei',
+      'Jun','Jul','Agu','Sep','Okt','Nov','Des'
+    ];
+    return '${hari[now.weekday % 7]}, ${now.day} ${bulan[now.month]}';
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final today       = dateToString(DateTime.now());
+    final summaryAsync = ref.watch(dailySummaryProvider(today));
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('GocarFinance'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('GocarFinance', style: AppTextStyles.h2),
+            Text(_tanggalHariIni(), style: AppTextStyles.caption),
+          ],
+        ),
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Text(
-              'Sabtu, 21 Jun',
-              style: AppTextStyles.caption.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            color: AppColors.textSecondary,
+            onPressed: () {
+              ref.invalidate(dailySummaryProvider(today));
+              ref.invalidate(incentiveTargetsProvider(today));
+            },
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // Card Net Income — placeholder
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Net Penghasilan Hari Ini',
-                  style: TextStyle(color: Colors.white70, fontSize: 13),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  CurrencyFormatter.format(0),
-                  style: AppTextStyles.rupiah.copyWith(
-                    color: Colors.white,
-                  ),
-                ),
-              ],
+      body: RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: () async {
+          ref.invalidate(dailySummaryProvider(today));
+          ref.invalidate(incentiveTargetsProvider(today));
+        },
+        child: summaryAsync.when(
+          loading: () => const Center(
+            child: CircularProgressIndicator(color: AppColors.primary),
+          ),
+          error: (err, _) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                'Gagal memuat data:\n$err',
+                style: AppTextStyles.bodySecondary,
+                textAlign: TextAlign.center,
+              ),
             ),
           ),
-          const SizedBox(height: 24),
-          const Center(
-            child: Text(
-              'Dashboard — fitur lengkap di Step berikutnya',
-              style: AppTextStyles.bodySecondary,
-            ),
+          data: (summary) => ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+            children: [
+              HeroIncomeCard(summary: summary),
+              const SizedBox(height: 16),
+              StatsRow(summary: summary),
+              const SizedBox(height: 24),
+              InsentifSection(date: today, tripCount: summary.tripCount),
+              const SizedBox(height: 24),
+              RecentTransactions(summary: summary),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
