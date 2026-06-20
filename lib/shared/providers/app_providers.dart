@@ -63,3 +63,45 @@ final incentiveTargetsProvider =
     FutureProvider.family<List<IncentiveTargetModel>, String>((ref, date) {
   return ref.watch(incentiveRepositoryProvider).getTargetsByDate(date);
 });
+
+// ── Laporan: 7 hari terakhir ─────────────────────────────
+
+final weeklyDataProvider = FutureProvider<List<DailySummary>>((ref) async {
+  final now  = DateTime.now();
+  final from = dateToString(now.subtract(const Duration(days: 6)));
+  final to   = dateToString(now);
+
+  final trips    = await ref.read(tripRepositoryProvider).getTripsInRange(from, to);
+  final expenses = await ref.read(expenseRepositoryProvider).getExpensesInRange(from, to);
+
+  final tMap = <String, List<TripModel>>{};
+  final eMap = <String, List<ExpenseModel>>{};
+  for (final t in trips)    tMap.putIfAbsent(t.date, () => []).add(t);
+  for (final e in expenses) eMap.putIfAbsent(e.date, () => []).add(e);
+
+  return List.generate(7, (i) {
+    final d = dateToString(now.subtract(Duration(days: 6 - i)));
+    return DailySummary(date: d, trips: tMap[d] ?? [], expenses: eMap[d] ?? []);
+  });
+});
+
+// ── Laporan: bulan ini ────────────────────────────────────
+
+final monthlyDataProvider = FutureProvider<List<DailySummary>>((ref) async {
+  final now  = DateTime.now();
+  final from = dateToString(DateTime(now.year, now.month, 1));
+  final to   = dateToString(now);
+
+  final trips    = await ref.read(tripRepositoryProvider).getTripsInRange(from, to);
+  final expenses = await ref.read(expenseRepositoryProvider).getExpensesInRange(from, to);
+
+  final tMap = <String, List<TripModel>>{};
+  final eMap = <String, List<ExpenseModel>>{};
+  for (final t in trips)    tMap.putIfAbsent(t.date, () => []).add(t);
+  for (final e in expenses) eMap.putIfAbsent(e.date, () => []).add(e);
+
+  return List.generate(now.day, (i) {
+    final d = dateToString(DateTime(now.year, now.month, i + 1));
+    return DailySummary(date: d, trips: tMap[d] ?? [], expenses: eMap[d] ?? []);
+  });
+});
