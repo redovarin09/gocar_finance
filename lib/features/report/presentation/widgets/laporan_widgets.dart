@@ -7,6 +7,12 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../features/catat/data/models/expense_category.dart';
 import '../../../../shared/providers/app_providers.dart';
 import '../../../../features/dashboard/data/daily_summary.dart';
+import '../../../../features/catat/data/models/trip_model.dart';
+import '../../../../features/catat/data/models/expense_model.dart';
+import '../../../../features/catat/presentation/widgets/edit_trip_sheet.dart';
+import '../../../../features/catat/presentation/widgets/edit_expense_sheet.dart';
+
+
 
 const _hari  = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
 const _bulan = ['','Jan','Feb','Mar','Apr','Mei',
@@ -122,32 +128,33 @@ class _DateNavigator extends StatelessWidget {
 
 // ── Daily Detail ──────────────────────────────────────────
 
-class _DailyDetail extends StatelessWidget {
+class _DailyDetail extends ConsumerWidget {
   final DailySummary summary;
   const _DailyDetail({required this.summary});
 
   @override
-  Widget build(BuildContext context) {
-    // Gabungkan semua transaksi urut waktu
+  Widget build(BuildContext context, WidgetRef ref) {
     final items = [
       ...summary.trips.map(
         (t) => _TxRow(
+          isIncome: true,
           emoji: t.paymentType == 'gopay' ? '📱' : '💵',
           label: 'Trip (${t.paymentType == 'gopay' ? 'GoPay' : 'Cash'})',
           sub: t.kmAdded > 0 ? '${t.kmAdded.toStringAsFixed(1)} km' : '',
           amount: t.totalIncome,
-          isIncome: true,
           time: t.createdAt,
+          trip: t,
         ),
       ),
       ...summary.expenses.map(
         (e) => _TxRow(
+          isIncome: false,
           emoji: ExpenseCategory.fromName(e.category).emoji,
           label: ExpenseCategory.fromName(e.category).label,
           sub: e.note ?? '',
           amount: e.amount,
-          isIncome: false,
           time: e.createdAt,
+          expense: e,
         ),
       ),
     ]..sort((a, b) => b.time.compareTo(a.time));
@@ -155,11 +162,8 @@ class _DailyDetail extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
       children: [
-        // Summary cards
         _SummaryGrid(summary: summary),
         const SizedBox(height: 20),
-
-        // Daftar transaksi
         const Text('Semua Transaksi', style: AppTextStyles.h2),
         const SizedBox(height: 10),
         Container(
@@ -179,6 +183,7 @@ class _DailyDetail extends StatelessWidget {
               return _TransactionTile(
                 row: e.value,
                 isLast: e.key == items.length - 1,
+                ref: ref,
               );
             }).toList(),
           ),
@@ -187,6 +192,8 @@ class _DailyDetail extends StatelessWidget {
     );
   }
 }
+         
+          
 
 // ── Summary Grid (4 kartu) ────────────────────────────────
 
@@ -321,102 +328,180 @@ class _MiniCard extends StatelessWidget {
 // ── Transaction tile ──────────────────────────────────────
 
 class _TxRow {
+  final bool isIncome;
   final String emoji;
   final String label;
   final String sub;
   final int amount;
-  final bool isIncome;
   final String time;
+  final TripModel? trip;
+  final ExpenseModel? expense;
+
   const _TxRow({
+    required this.isIncome,
     required this.emoji,
     required this.label,
     required this.sub,
     required this.amount,
-    required this.isIncome,
     required this.time,
+    this.trip,
+    this.expense,
   });
+
   String get hhmm {
     try {
       final dt = DateTime.parse(time).toLocal();
-      return '${dt.hour.toString().padLeft(2,'0')}:${dt.minute.toString().padLeft(2,'0')}';
-    } catch (_) {
-      return '';
-    }
+      return '${dt.hour.toString().padLeft(2,'0')}:'
+          '${dt.minute.toString().padLeft(2,'0')}';
+    } catch (_) { return ''; }
   }
+
+  String get date => trip?.date ?? expense?.date ?? '';
+  int? get id => trip?.id ?? expense?.id;
 }
 
 class _TransactionTile extends StatelessWidget {
   final _TxRow row;
   final bool isLast;
-  const _TransactionTile({required this.row, required this.isLast});
+  final WidgetRef ref;
+  const _TransactionTile(
+      {required this.row, required this.isLast, required this.ref});
+
+  Future<void> _delete(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus Transaksi?'),
+        content: Text('Hapus "${row.label}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Hapus',
+                style: TextStyle(color: AppColors.expense)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    if (row.trip?.id != null) {
+      await ref.read(tripRepositoryProvider).deleteTrip(row.trip!.id!);
+    } else if (row.expense?.id != null) {
+      await ref
+          .read(expenseRepositoryProvider)
+          .deleteExpense(row.expense!.id!);
+    }
+    ref.invalidate(dailySummaryProvider(row.date));
+    ref.invalidate(dailyTripsProvider(row.date));
+    ref.invalidate(dailyExpensesProvider(row.date));
+    ref.invalidate(weeklyDataProvider);
+    ref.invalidate(monthlyDataProvider);
+  }
+
+  void _edit(BuildContext context) {
+    if (row.trip != null) {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) =>
+            EditTripSheet(trip: row.trip!, onUpdated: () {}),
+      );
+    } else if (row.expense != null) {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) =>
+            EditExpenseSheet(expense: row.expense!, onUpdated: () {}),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              Text(row.emoji, style: const TextStyle(fontSize: 24)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      row.label,
-                      style: AppTextStyles.body.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    if (row.sub.isNotEmpty)
-                      Text(row.sub, style: AppTextStyles.caption),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+    return Dismissible(
+      key: Key('lap_${row.id}_${row.time}'),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) async {
+        await _delete(context);
+        return false;
+      },
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+          color: AppColors.expense,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: const Icon(Icons.delete_rounded,
+            color: Colors.white, size: 26),
+      ),
+      child: GestureDetector(
+        onTap: () => _edit(context),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 12),
+              child: Row(
                 children: [
-                  Text(
-                    '${row.isIncome ? '+' : '-'}${CurrencyFormatter.formatCompact(row.amount)}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: row.isIncome ? AppColors.income : AppColors.expense,
+                  Text(row.emoji,
+                      style: const TextStyle(fontSize: 24)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          row.label,
+                          style: AppTextStyles.body.copyWith(
+                              fontWeight: FontWeight.w500),
+                        ),
+                        if (row.sub.isNotEmpty)
+                          Text(row.sub, style: AppTextStyles.caption),
+                        const Text('Tap untuk edit',
+                            style: TextStyle(
+                                fontSize: 10, color: AppColors.textHint)),
+                      ],
                     ),
                   ),
-                  Text(row.hhmm, style: AppTextStyles.caption),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${row.isIncome ? '+' : '-'}'
+                        '${CurrencyFormatter.formatCompact(row.amount)}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: row.isIncome
+                              ? AppColors.income
+                              : AppColors.expense,
+                        ),
+                      ),
+                      Text(row.hhmm, style: AppTextStyles.caption),
+                    ],
+                  ),
                 ],
               ),
-            ],
-          ),
+            ),
+            if (!isLast)
+              const Divider(
+                  height: 1, indent: 56, color: AppColors.divider),
+          ],
         ),
-        if (!isLast)
-          const Divider(height: 1, indent: 56, color: AppColors.divider),
-      ],
-    );
-  }
-}
-
-class _EmptyDay extends StatelessWidget {
-  const _EmptyDay();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.calendar_today_outlined,
-              color: AppColors.textHint, size: 48),
-          SizedBox(height: 12),
-          Text('Tidak ada transaksi', style: AppTextStyles.bodySecondary),
-        ],
       ),
     );
   }
 }
+   
+               
+      
 
 // ═══════════════════════════════════════════════════════════
 //  TAB MINGGUAN
