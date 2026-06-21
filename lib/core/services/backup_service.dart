@@ -1,19 +1,16 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../shared/providers/app_providers.dart';
-import '../../features/catat/data/repositories/trip_repository.dart';
-import '../../features/catat/data/repositories/expense_repository.dart';
-import '../../features/incentive/data/repositories/incentive_repository.dart';
 import '../../features/catat/data/models/trip_model.dart';
 import '../../features/catat/data/models/expense_model.dart';
 import '../../features/incentive/data/models/incentive_target_model.dart';
+import '../../features/catat/data/repositories/trip_repository.dart';
+import '../../features/catat/data/repositories/expense_repository.dart';
+import '../../features/incentive/data/repositories/incentive_repository.dart';
 import '../database/database_helper.dart';
-
-// ── Result class ──────────────────────────────────────────
 
 class RestoreResult {
   final int trips;
@@ -25,8 +22,6 @@ class RestoreResult {
     required this.incentives,
   });
 }
-
-// ── Service ───────────────────────────────────────────────
 
 class BackupService {
   final TripRepository _tripRepo;
@@ -54,14 +49,12 @@ class BackupService {
 
     final jsonStr = const JsonEncoder.withIndent('  ').convert(backupMap);
 
-    // Tulis ke temp dir → share
     final tempDir  = await getTemporaryDirectory();
     final now      = DateTime.now();
     final dateTag  = '${now.year}'
         '${now.month.toString().padLeft(2, '0')}'
         '${now.day.toString().padLeft(2, '0')}';
-    final fileName = 'gocarfinance_backup_$dateTag.json';
-    final file     = File('${tempDir.path}/$fileName');
+    final file = File('${tempDir.path}/gocarfinance_backup_$dateTag.json');
     await file.writeAsString(jsonStr);
 
     await Share.shareXFiles(
@@ -70,30 +63,12 @@ class BackupService {
     );
   }
 
-  /// Pilih file .json → restore ke SQLite
-  Future<RestoreResult> restoreFromFile() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['json'],
-    );
-
-    if (result == null || result.files.isEmpty) {
-      throw Exception('Tidak ada file yang dipilih');
+  /// Restore dari teks JSON (paste manual oleh user)
+  Future<RestoreResult> restoreFromJson(String jsonStr) async {
+    if (jsonStr.trim().isEmpty) {
+      throw Exception('Teks JSON kosong');
     }
-
-    // Android bisa dapat path atau bytes
-    final path = result.files.first.path;
-    String jsonStr;
-
-    if (path != null && path.isNotEmpty) {
-      jsonStr = await File(path).readAsString();
-    } else {
-      final bytes = result.files.first.bytes;
-      if (bytes == null) throw Exception('Tidak bisa membaca file');
-      jsonStr = utf8.decode(bytes);
-    }
-
-    return _processRestore(jsonStr);
+    return _processRestore(jsonStr.trim());
   }
 
   Future<RestoreResult> _processRestore(String jsonStr) async {
@@ -101,25 +76,23 @@ class BackupService {
     try {
       backup = jsonDecode(jsonStr) as Map<String, dynamic>;
     } catch (_) {
-      throw Exception('Format file tidak valid (bukan JSON)');
+      throw Exception('Format tidak valid — bukan JSON yang benar');
     }
 
     if (backup['app'] != 'GocarFinance') {
       throw Exception('Ini bukan file backup GocarFinance');
     }
 
-    final data           = backup['data'] as Map<String, dynamic>;
-    final tripsRaw       = (data['trips'] as List).cast<Map<String, dynamic>>();
-    final expensesRaw    = (data['expenses'] as List).cast<Map<String, dynamic>>();
-    final incentivesRaw  = (data['incentive_targets'] as List).cast<Map<String, dynamic>>();
+    final data          = backup['data'] as Map<String, dynamic>;
+    final tripsRaw      = (data['trips'] as List).cast<Map<String, dynamic>>();
+    final expensesRaw   = (data['expenses'] as List).cast<Map<String, dynamic>>();
+    final incentivesRaw = (data['incentive_targets'] as List).cast<Map<String, dynamic>>();
 
-    // Hapus semua data lama
     final db = await DatabaseHelper.instance.database;
     await db.delete('trips');
     await db.delete('expenses');
     await db.delete('incentive_targets');
 
-    // Insert data dari backup (reset ID supaya tidak konflik)
     for (final raw in tripsRaw) {
       await _tripRepo.insertTrip(TripModel.fromMap(raw).copyWith(id: null));
     }
@@ -148,8 +121,6 @@ class BackupService {
     );
   }
 }
-
-// ── Riverpod Provider ─────────────────────────────────────
 
 final backupServiceProvider = Provider<BackupService>((ref) {
   return BackupService(

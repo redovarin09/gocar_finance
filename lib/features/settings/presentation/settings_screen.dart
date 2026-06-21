@@ -13,8 +13,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  bool _isBackingUp  = false;
-  bool _isRestoring  = false;
+  bool _isBackingUp = false;
+  bool _isRestoring = false;
 
   // ── Backup ───────────────────────────────────────────────
 
@@ -23,7 +23,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     try {
       await ref.read(backupServiceProvider).createAndShareBackup();
     } catch (e) {
-      _showSnack('Gagal membuat backup: $e', isError: true);
+      _showSnack('Gagal backup: $e', isError: true);
     } finally {
       if (mounted) setState(() => _isBackingUp = false);
     }
@@ -32,21 +32,50 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   // ── Restore ──────────────────────────────────────────────
 
   Future<void> _handleRestore() async {
-    final confirm = await _confirmDialog(
-      title: '⚠️ Pulihkan Backup?',
-      content: 'SEMUA DATA yang ada sekarang akan DIHAPUS dan '
-          'diganti dengan isi file backup.\n\n'
-          'Pastikan file backup yang dipilih sudah benar.',
-      confirmLabel: 'Ya, Pulihkan',
-      confirmColor: AppColors.expense,
+    // Step 1: User paste JSON
+    final jsonStr = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const _PasteJsonSheet(),
     );
+
+    if (jsonStr == null || jsonStr.isEmpty) return;
+
+    // Step 2: Konfirmasi
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('⚠️ Pulihkan Backup?'),
+        content: const Text(
+          'SEMUA DATA yang ada sekarang akan DIHAPUS '
+          'dan diganti dengan isi backup.\n\n'
+          'Proses ini tidak bisa dibatalkan.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.expense,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Ya, Pulihkan'),
+          ),
+        ],
+      ),
+    );
+
     if (confirm != true) return;
 
+    // Step 3: Restore
     setState(() => _isRestoring = true);
     try {
-      final result = await ref.read(backupServiceProvider).restoreFromFile();
+      final result = await ref.read(backupServiceProvider).restoreFromJson(jsonStr);
 
-      // Refresh semua provider
       ref.invalidate(dailySummaryProvider);
       ref.invalidate(dailyTripsProvider);
       ref.invalidate(dailyExpensesProvider);
@@ -66,11 +95,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 _ResultRow('Trip', result.trips),
                 _ResultRow('Pengeluaran', result.expenses),
                 _ResultRow('Target Insentif', result.incentives),
-                const SizedBox(height: 8),
-                const Text(
-                  'Data berhasil dipulihkan.',
-                  style: AppTextStyles.bodySecondary,
-                ),
               ],
             ),
             actions: [
@@ -93,37 +117,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
-  // ── Helpers ──────────────────────────────────────────────
-
-  Future<bool?> _confirmDialog({
-    required String title,
-    required String content,
-    required String confirmLabel,
-    required Color confirmColor,
-  }) {
-    return showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: Text(content, style: AppTextStyles.bodySecondary),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: confirmColor,
-              foregroundColor: Colors.white,
-            ),
-            child: Text(confirmLabel),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showSnack(String msg, {bool isError = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -144,80 +137,68 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // ── BACKUP ──────────────────────────────────────
-          _SectionHeader(
-            icon: Icons.cloud_upload_rounded,
-            title: 'Backup Data',
-          ),
+          // BACKUP
+          _SectionHeader(icon: Icons.cloud_upload_rounded, title: 'Backup Data'),
           const SizedBox(height: 8),
-          _SettingsCard(
-            children: [
-              _InfoTile(
-                icon: Icons.info_outline_rounded,
-                text: 'Backup disimpan sebagai file .json. '
-                    'Kamu bisa kirim ke WhatsApp, Google Drive, '
-                    'Gmail, atau aplikasi lain sebagai cadangan.',
-              ),
-              const _Divider(),
-              _ActionTile(
-                icon: Icons.ios_share_rounded,
-                label: 'Buat & Bagikan Backup',
-                sublabel: 'Ekspor semua trip, pengeluaran & insentif',
-                color: AppColors.primary,
-                isLoading: _isBackingUp,
-                onTap: _handleBackup,
-              ),
-            ],
-          ),
+          _SettingsCard(children: [
+            _InfoTile(
+              icon: Icons.info_outline_rounded,
+              text: 'Backup disimpan sebagai file .json. '
+                  'Share ke WhatsApp, Google Drive, Gmail, atau simpan di mana saja.',
+            ),
+            const _CardDivider(),
+            _ActionTile(
+              icon: Icons.ios_share_rounded,
+              label: 'Buat & Bagikan Backup',
+              sublabel: 'Ekspor semua data ke file .json',
+              color: AppColors.primary,
+              isLoading: _isBackingUp,
+              onTap: _handleBackup,
+            ),
+          ]),
 
           const SizedBox(height: 24),
 
-          // ── RESTORE ─────────────────────────────────────
-          _SectionHeader(
-            icon: Icons.cloud_download_rounded,
-            title: 'Restore Data',
-          ),
+          // RESTORE
+          _SectionHeader(icon: Icons.cloud_download_rounded, title: 'Restore Data'),
           const SizedBox(height: 8),
-          _SettingsCard(
-            children: [
-              _InfoTile(
-                icon: Icons.warning_amber_rounded,
-                iconColor: AppColors.warning,
-                text: 'Restore akan MENGHAPUS semua data saat ini '
-                    'dan menggantinya dengan isi file backup. '
-                    'Proses ini tidak bisa dibatalkan.',
-              ),
-              const _Divider(),
-              _ActionTile(
-                icon: Icons.upload_file_rounded,
-                label: 'Pilih File Backup (.json)',
-                sublabel: 'Import dari storage / WhatsApp / Drive',
-                color: AppColors.accent,
-                isLoading: _isRestoring,
-                onTap: _handleRestore,
-              ),
-            ],
-          ),
+          _SettingsCard(children: [
+            _InfoTile(
+              icon: Icons.info_outline_rounded,
+              text: 'Cara restore:\n'
+                  '1. Buka file .json backup (WA, Drive, dll)\n'
+                  '2. Buka dengan text editor, copy SEMUA isinya\n'
+                  '3. Paste di kolom yang muncul',
+            ),
+            const _CardDivider(),
+            _InfoTile(
+              icon: Icons.warning_amber_rounded,
+              iconColor: AppColors.warning,
+              text: 'SEMUA data saat ini akan dihapus dan diganti isi backup.',
+            ),
+            const _CardDivider(),
+            _ActionTile(
+              icon: Icons.paste_rounded,
+              label: 'Paste & Pulihkan Backup',
+              sublabel: 'Tempel teks JSON dari file backup',
+              color: AppColors.accent,
+              isLoading: _isRestoring,
+              onTap: _handleRestore,
+            ),
+          ]),
 
           const SizedBox(height: 24),
 
-          // ── INFO APP ────────────────────────────────────
-          _SectionHeader(
-            icon: Icons.info_rounded,
-            title: 'Informasi Aplikasi',
-          ),
+          // INFO APP
+          _SectionHeader(icon: Icons.info_rounded, title: 'Informasi Aplikasi'),
           const SizedBox(height: 8),
-          _SettingsCard(
-            children: [
-              _InfoRow(label: 'Aplikasi', value: 'GocarFinance'),
-              const _Divider(),
-              _InfoRow(label: 'Versi', value: '1.0.0'),
-              const _Divider(),
-              _InfoRow(label: 'Database', value: 'SQLite — offline'),
-              const _Divider(),
-              _InfoRow(label: 'Platform', value: 'Android (Flutter)'),
-            ],
-          ),
+          _SettingsCard(children: [
+            _InfoRow(label: 'Aplikasi', value: 'GocarFinance'),
+            const _CardDivider(),
+            _InfoRow(label: 'Versi', value: '1.0.0'),
+            const _CardDivider(),
+            _InfoRow(label: 'Database', value: 'SQLite — offline'),
+          ]),
 
           const SizedBox(height: 40),
         ],
@@ -226,7 +207,147 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 }
 
-// ── Private widgets ───────────────────────────────────────
+// ── Paste JSON Bottom Sheet ───────────────────────────────
+
+class _PasteJsonSheet extends StatefulWidget {
+  const _PasteJsonSheet();
+
+  @override
+  State<_PasteJsonSheet> createState() => _PasteJsonSheetState();
+}
+
+class _PasteJsonSheetState extends State<_PasteJsonSheet> {
+  final _ctrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final text = _ctrl.text.trim();
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Kolom teks masih kosong!'),
+          backgroundColor: AppColors.expense,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    if (!text.contains('"GocarFinance"')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ini bukan file backup GocarFinance!'),
+          backgroundColor: AppColors.expense,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    Navigator.of(context).pop(text);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+        decoration: const BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.divider,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text('📋 Paste Teks Backup', style: AppTextStyles.h2),
+            const SizedBox(height: 12),
+            const Text(
+              'Buka file .json di text viewer, copy semua isinya, '
+              'lalu paste di bawah.',
+              style: AppTextStyles.bodySecondary,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _ctrl,
+              maxLines: 7,
+              keyboardType: TextInputType.multiline,
+              style: const TextStyle(
+                fontSize: 12,
+                fontFamily: 'monospace',
+                color: AppColors.textPrimary,
+              ),
+              decoration: InputDecoration(
+                hintText: '{\n  "app": "GocarFinance",\n  ...\n}',
+                hintStyle: const TextStyle(
+                  color: AppColors.textHint,
+                  fontSize: 12,
+                ),
+                filled: true,
+                fillColor: AppColors.background,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.divider),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.divider),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide:
+                      const BorderSide(color: AppColors.primary, width: 2),
+                ),
+                contentPadding: const EdgeInsets.all(12),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton.icon(
+                onPressed: _submit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accent,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.check_circle_rounded),
+                label: const Text(
+                  'Gunakan Teks Ini',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Widget helpers ────────────────────────────────────────
 
 class _ResultRow extends StatelessWidget {
   final String label;
@@ -288,13 +409,12 @@ class _SettingsCard extends StatelessWidget {
   }
 }
 
-class _Divider extends StatelessWidget {
-  const _Divider();
+class _CardDivider extends StatelessWidget {
+  const _CardDivider();
 
   @override
-  Widget build(BuildContext context) {
-    return const Divider(height: 1, indent: 16, color: AppColors.divider);
-  }
+  Widget build(BuildContext context) =>
+      const Divider(height: 1, indent: 16, color: AppColors.divider);
 }
 
 class _InfoTile extends StatelessWidget {
@@ -310,15 +430,13 @@ class _InfoTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, color: iconColor, size: 20),
           const SizedBox(width: 12),
-          Expanded(
-            child: Text(text, style: AppTextStyles.bodySecondary),
-          ),
+          Expanded(child: Text(text, style: AppTextStyles.bodySecondary)),
         ],
       ),
     );
@@ -345,7 +463,8 @@ class _ActionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: Container(
         width: 44,
         height: 44,
