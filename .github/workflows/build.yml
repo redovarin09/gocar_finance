@@ -37,10 +37,29 @@ jobs:
           sed -i \
             's/android:label="gocar_finance"/android:label="GocarFinance"/' \
             android/app/src/main/AndroidManifest.xml
-          sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/' android/app/build.gradle.kts 2>/dev/null || true
-          sed -i -E 's/compileSdk = [0-9]+/compileSdk = 36/' android/app/build.gradle.kts 2>/dev/null || true
-          sed -i 's/compileSdk flutter.compileSdkVersion/compileSdk 36/' android/app/build.gradle 2>/dev/null || true
-          sed -i -E 's/compileSdkVersion [0-9]+/compileSdkVersion 36/' android/app/build.gradle 2>/dev/null || true
+          python3 << 'PYEOF'
+          import os, re
+          files = ['android/app/build.gradle.kts', 'android/app/build.gradle']
+          patterns = [
+              (r'compileSdk\s*=\s*flutter\.compileSdkVersion', 'compileSdk = 36'),
+              (r'compileSdk\s+flutter\.compileSdkVersion', 'compileSdk 36'),
+              (r'compileSdkVersion\(flutter\.compileSdkVersion\)', 'compileSdkVersion(36)'),
+              (r'compileSdk\s*=\s*\d+', 'compileSdk = 36'),
+              (r'compileSdkVersion\s+\d+', 'compileSdkVersion 36'),
+          ]
+          for f in files:
+              if not os.path.exists(f): continue
+              txt = open(f).read()
+              orig = txt
+              for p, r in patterns:
+                  txt = re.sub(p, r, txt)
+              if txt != orig:
+                  open(f, 'w').write(txt)
+                  print(f'Patched: {f}')
+              else:
+                  lines = [l for l in txt.splitlines() if 'compileSdk' in l.lower()]
+                  print(f'No match in {f}: {lines}')
+          PYEOF
 
       - name: Get Flutter dependencies
         run: flutter pub get
