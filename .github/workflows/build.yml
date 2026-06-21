@@ -37,29 +37,9 @@ jobs:
           sed -i \
             's/android:label="gocar_finance"/android:label="GocarFinance"/' \
             android/app/src/main/AndroidManifest.xml
-          python3 << 'PYEOF'
-          import os, re
-          files = ['android/app/build.gradle.kts', 'android/app/build.gradle']
-          patterns = [
-              (r'compileSdk\s*=\s*flutter\.compileSdkVersion', 'compileSdk = 36'),
-              (r'compileSdk\s+flutter\.compileSdkVersion', 'compileSdk 36'),
-              (r'compileSdkVersion\(flutter\.compileSdkVersion\)', 'compileSdkVersion(36)'),
-              (r'compileSdk\s*=\s*\d+', 'compileSdk = 36'),
-              (r'compileSdkVersion\s+\d+', 'compileSdkVersion 36'),
-          ]
-          for f in files:
-              if not os.path.exists(f): continue
-              txt = open(f).read()
-              orig = txt
-              for p, r in patterns:
-                  txt = re.sub(p, r, txt)
-              if txt != orig:
-                  open(f, 'w').write(txt)
-                  print(f'Patched: {f}')
-              else:
-                  lines = [l for l in txt.splitlines() if 'compileSdk' in l.lower()]
-                  print(f'No match in {f}: {lines}')
-          PYEOF
+
+      - name: Patch compileSdk to 36
+        run: python3 scripts/patch_compilesdk.py
 
       - name: Get Flutter dependencies
         run: flutter pub get
@@ -71,61 +51,7 @@ jobs:
 
       - name: Generate App Icon
         run: |
-          python3 << 'PYEOF'
-          from PIL import Image, ImageDraw, ImageFont
-          import os
-
-          SIZE = 1024
-          img = Image.new('RGBA', (SIZE, SIZE), (0, 0, 0, 0))
-          draw = ImageDraw.Draw(img)
-
-          # Background hijau rounded
-          draw.rounded_rectangle(
-              [0, 0, SIZE, SIZE],
-              radius=220,
-              fill=(0, 136, 13, 255)
-          )
-
-          # Lingkaran putih di tengah
-          cx, cy = SIZE // 2, SIZE // 2
-          cr = SIZE // 3
-          draw.ellipse(
-              [cx - cr, cy - cr, cx + cr, cy + cr],
-              fill=(255, 255, 255, 245)
-          )
-
-          # Teks "GF" warna hijau
-          font_paths = [
-              "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-              "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
-              "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
-          ]
-          font = None
-          for p in font_paths:
-              if os.path.exists(p):
-                  try:
-                      font = ImageFont.truetype(p, 260)
-                      break
-                  except Exception:
-                      pass
-          if font is None:
-              font = ImageFont.load_default()
-
-          text = "GF"
-          bbox = draw.textbbox((0, 0), text, font=font)
-          tw = bbox[2] - bbox[0]
-          th = bbox[3] - bbox[1]
-          draw.text(
-              ((SIZE - tw) // 2 - bbox[0], (SIZE - th) // 2 - bbox[1]),
-              text,
-              fill=(0, 100, 8, 255),
-              font=font
-          )
-
-          os.makedirs('assets/icon', exist_ok=True)
-          img.save('assets/icon/icon.png')
-          print('Icon berhasil dibuat: assets/icon/icon.png')
-          PYEOF
+          python3 scripts/gen_icon.py
 
       - name: Generate Launcher Icons
         run: dart run flutter_launcher_icons
