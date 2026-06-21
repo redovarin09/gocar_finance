@@ -45,5 +45,15 @@ class TripRepository {
   Future<int> deleteTrip(int id) async {
     final db = await _db.database;
     return db.delete('trips', where: 'id = ?', whereArgs: [id]);
+
+  }
+
+  Future<List<TripModel>> getAllTrips() async {
+    final db = await _db.database;
+    final maps = await db.query(
+      'trips',
+      orderBy: 'date DESC, created_at DESC',
+    );
+    return maps.map(TripModel.fromMap).toList();
   }
 }

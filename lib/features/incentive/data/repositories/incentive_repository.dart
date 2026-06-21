@@ -29,4 +29,13 @@ class IncentiveRepository {
       whereArgs: [id],
     );
   }
+  
+  Future<List<IncentiveTargetModel>> getAllTargets() async {
+    final db = await _db.database;
+    final maps = await db.query(
+      'incentive_targets',
+      orderBy: 'date ASC',
+    );
+    return maps.map(IncentiveTargetModel.fromMap).toList();
+  }
 }
