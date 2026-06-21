@@ -5,6 +5,10 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../features/catat/data/models/expense_category.dart';
+import '../../../../features/catat/data/models/trip_model.dart';
+import '../../../../features/catat/data/models/expense_model.dart';
+import '../../../../features/catat/presentation/widgets/edit_trip_sheet.dart';
+import '../../../../features/catat/presentation/widgets/edit_expense_sheet.dart';
 import '../../../../shared/providers/app_providers.dart';
 import '../../../../features/dashboard/data/daily_summary.dart';
 import '../../../../features/catat/data/models/trip_model.dart';
@@ -69,7 +73,7 @@ class _TabHarianState extends ConsumerState<TabHarian> {
             ),
             data: (summary) => summary.tripCount == 0 &&
                     summary.expenses.isEmpty
-                ? const _EmptyDay()
+                ? _EmptyDay()
                 : _DailyDetail(summary: summary),
           ),
         ),
