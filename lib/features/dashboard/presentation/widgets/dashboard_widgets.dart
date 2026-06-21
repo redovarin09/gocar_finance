@@ -409,38 +409,47 @@ class _InsentifCard extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════
-//  RECENT TRANSACTIONS
+//  RECENT TRANSACTIONS (dengan delete & edit)
 // ═══════════════════════════════════════════════
 
-class RecentTransactions extends StatelessWidget {
+// Tambahkan import ini di atas file (cari bagian imports):
+// import '../../../../features/catat/data/models/trip_model.dart';
+// import '../../../../features/catat/data/models/expense_model.dart';
+// import '../../../../features/catat/data/models/expense_category.dart';
+// import '../../../../features/catat/presentation/widgets/edit_trip_sheet.dart';
+// import '../../../../features/catat/presentation/widgets/edit_expense_sheet.dart';
+
+class RecentTransactions extends ConsumerWidget {
   final DailySummary summary;
   const RecentTransactions({super.key, required this.summary});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final items = [
-      ...summary.trips.map(
-        (t) => _TxItem(
-          isIncome: true,
-          label: 'Trip (${t.paymentType == 'gopay' ? 'GoPay' : 'Cash'})',
-          amount: t.totalIncome,
-          icon: Icons.directions_car_rounded,
-          iconColor: AppColors.primary,
-          time: t.createdAt,
-          note: t.kmAdded > 0 ? '${t.kmAdded.toStringAsFixed(1)} km' : null,
-        ),
-      ),
-      ...summary.expenses.map(
-        (e) => _TxItem(
-          isIncome: false,
-          label: '${e.categoryEnum.emoji} ${e.categoryEnum.label}',
-          amount: e.amount,
-          icon: Icons.remove_circle_outline_rounded,
-          iconColor: AppColors.expense,
-          time: e.createdAt,
-          note: e.note,
-        ),
-      ),
+      ...summary.trips.map((t) => _TxItem(
+            isIncome: true,
+            label:
+                'Trip (${t.paymentType == 'gopay' ? 'GoPay' : 'Cash'})',
+            amount: t.totalIncome,
+            icon: Icons.directions_car_rounded,
+            iconColor: AppColors.primary,
+            time: t.createdAt,
+            note: t.kmAdded > 0
+                ? '${t.kmAdded.toStringAsFixed(1)} km'
+                : null,
+            trip: t,
+          )),
+      ...summary.expenses.map((e) => _TxItem(
+            isIncome: false,
+            label:
+                '${ExpenseCategory.fromName(e.category).emoji} ${ExpenseCategory.fromName(e.category).label}',
+            amount: e.amount,
+            icon: Icons.remove_circle_outline_rounded,
+            iconColor: AppColors.expense,
+            time: e.createdAt,
+            note: e.note,
+            expense: e,
+          )),
     ]..sort((a, b) => b.time.compareTo(a.time));
 
     final shown = items.take(8).toList();
@@ -485,18 +494,22 @@ class RecentTransactions extends StatelessWidget {
                   ],
                 ),
                 child: Column(
-                  children: shown.asMap().entries.map((e) {
-                    return _TransactionTile(
-                      item: e.value,
-                      isLast: e.key == shown.length - 1,
-                    );
-                  }).toList(),
+                  children: shown
+                      .asMap()
+                      .entries
+                      .map((e) => _DismissibleTile(
+                            item: e.value,
+                            isLast: e.key == shown.length - 1,
+                          ))
+                      .toList(),
                 ),
               ),
       ],
     );
   }
 }
+
+// ── Model untuk tiap baris transaksi ─────────────────────
 
 class _TxItem {
   final bool isIncome;
@@ -506,6 +519,8 @@ class _TxItem {
   final Color iconColor;
   final String time;
   final String? note;
+  final TripModel? trip;
+  final ExpenseModel? expense;
 
   const _TxItem({
     required this.isIncome,
@@ -515,6 +530,8 @@ class _TxItem {
     required this.iconColor,
     required this.time,
     this.note,
+    this.trip,
+    this.expense,
   });
 
   String get formattedTime {
@@ -527,69 +544,175 @@ class _TxItem {
       return '';
     }
   }
+
+  String get date => trip?.date ?? expense?.date ?? '';
+  int? get id => trip?.id ?? expense?.id;
 }
 
-class _TransactionTile extends StatelessWidget {
+// ── Tile dengan swipe-hapus dan tap-edit ─────────────────
+
+class _DismissibleTile extends ConsumerWidget {
   final _TxItem item;
   final bool isLast;
-  const _TransactionTile({required this.item, required this.isLast});
+  const _DismissibleTile({required this.item, required this.isLast});
+
+  Future<void> _delete(BuildContext context, WidgetRef ref) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus Transaksi?'),
+        content: Text(
+          'Hapus "${item.label}" '
+          '${CurrencyFormatter.formatCompact(item.amount)}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Hapus',
+                style: TextStyle(color: AppColors.expense)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    if (item.trip != null && item.trip!.id != null) {
+      await ref.read(tripRepositoryProvider).deleteTrip(item.trip!.id!);
+    } else if (item.expense != null && item.expense!.id != null) {
+      await ref
+          .read(expenseRepositoryProvider)
+          .deleteExpense(item.expense!.id!);
+    }
+
+    ref.invalidate(dailySummaryProvider(item.date));
+    ref.invalidate(dailyTripsProvider(item.date));
+    ref.invalidate(dailyExpensesProvider(item.date));
+    ref.invalidate(weeklyDataProvider);
+    ref.invalidate(monthlyDataProvider);
+  }
+
+  void _edit(BuildContext context, WidgetRef ref) {
+    if (item.trip != null) {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => EditTripSheet(
+          trip: item.trip!,
+          onUpdated: () {},
+        ),
+      );
+    } else if (item.expense != null) {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => EditExpenseSheet(
+          expense: item.expense!,
+          onUpdated: () {},
+        ),
+      );
+    }
+  }
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              // Icon container
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: item.iconColor.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: Icon(item.icon, color: item.iconColor, size: 20),
-              ),
-              const SizedBox(width: 12),
-              // Label & note
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.label,
-                      style: AppTextStyles.body.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    if (item.note != null && item.note!.isNotEmpty)
-                      Text(item.note!, style: AppTextStyles.caption),
-                  ],
-                ),
-              ),
-              // Amount & time
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Dismissible(
+      key: Key('tx_${item.id}_${item.time}'),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) async {
+        await _delete(context, ref);
+        return false; // kita handle delete manual
+      },
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+          color: AppColors.expense,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.delete_rounded, color: Colors.white, size: 26),
+            SizedBox(height: 4),
+            Text('Hapus',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
+      child: GestureDetector(
+        onTap: () => _edit(context, ref),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 12),
+              child: Row(
                 children: [
-                  Text(
-                    '${item.isIncome ? '+' : '-'}${CurrencyFormatter.formatCompact(item.amount)}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: item.isIncome ? AppColors.income : AppColors.expense,
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: item.iconColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child:
+                        Icon(item.icon, color: item.iconColor, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.label,
+                          style: AppTextStyles.body
+                              .copyWith(fontWeight: FontWeight.w500),
+                        ),
+                        if (item.note != null && item.note!.isNotEmpty)
+                          Text(item.note!, style: AppTextStyles.caption),
+                        const Text('Tap untuk edit',
+                            style: TextStyle(
+                                fontSize: 10,
+                                color: AppColors.textHint)),
+                      ],
                     ),
                   ),
-                  Text(item.formattedTime, style: AppTextStyles.caption),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${item.isIncome ? '+' : '-'}'
+                        '${CurrencyFormatter.formatCompact(item.amount)}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: item.isIncome
+                              ? AppColors.income
+                              : AppColors.expense,
+                        ),
+                      ),
+                      Text(item.formattedTime,
+                          style: AppTextStyles.caption),
+                    ],
+                  ),
                 ],
               ),
-            ],
-          ),
+            ),
+            if (!isLast)
+              const Divider(
+                  height: 1, indent: 70, color: AppColors.divider),
+          ],
         ),
-        if (!isLast)
-          const Divider(height: 1, indent: 70, color: AppColors.divider),
-      ],
+      ),
     );
   }
 }
