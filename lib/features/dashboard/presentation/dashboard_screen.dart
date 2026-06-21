@@ -19,7 +19,6 @@ class DashboardScreen extends ConsumerWidget {
     ];
     return '${hari[now.weekday % 7]}, ${now.day} ${bulan[now.month]}';
   }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final today       = dateToString(DateTime.now());
@@ -35,15 +34,21 @@ class DashboardScreen extends ConsumerWidget {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            color: AppColors.textSecondary,
-            onPressed: () {
-              ref.invalidate(dailySummaryProvider(today));
-              ref.invalidate(incentiveTargetsProvider(today));
-            },
-          ),
-        ],
+  IconButton(
+    icon: const Icon(Icons.settings_rounded),
+    color: AppColors.textSecondary,
+    tooltip: 'Pengaturan & Backup',
+    onPressed: () => context.push('/settings'),
+  ),
+  IconButton(
+    icon: const Icon(Icons.refresh_rounded),
+    color: AppColors.textSecondary,
+    onPressed: () {
+      ref.invalidate(dailySummaryProvider(today));
+      ref.invalidate(incentiveTargetsProvider(today));
+    },
+  ),
+],
       ),
       body: RefreshIndicator(
         color: AppColors.primary,

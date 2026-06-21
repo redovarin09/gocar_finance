@@ -46,4 +46,13 @@ class ExpenseRepository {
     final db = await _db.database;
     return db.delete('expenses', where: 'id = ?', whereArgs: [id]);
   }
+
+  Future<List<ExpenseModel>> getAllExpenses() async {
+    final db = await _db.database;
+    final maps = await db.query(
+      'expenses',
+      orderBy: 'date DESC, created_at DESC',
+    );
+    return maps.map(ExpenseModel.fromMap).toList();
+  }
 }
