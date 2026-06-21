@@ -37,6 +37,9 @@ jobs:
           sed -i \
             's/android:label="gocar_finance"/android:label="GocarFinance"/' \
             android/app/src/main/AndroidManifest.xml
+          sed -i 's/compileSdk flutter.compileSdkVersion/compileSdk 36/' android/app/build.gradle
+          sed -i 's/compileSdkVersion 34/compileSdkVersion 36/' android/app/build.gradle
+          sed -i 's/compileSdk 34/compileSdk 36/' android/app/build.gradle
 
       - name: Get Flutter dependencies
         run: flutter pub get
