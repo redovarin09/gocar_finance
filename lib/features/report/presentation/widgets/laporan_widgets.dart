@@ -1008,3 +1008,28 @@ class TabBulanan extends ConsumerWidget {
     );
   }
 }
+
+class _EmptyDay extends StatelessWidget {
+  const _EmptyDay();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.calendar_today_outlined,
+            color: AppColors.textHint,
+            size: 48,
+          ),
+          SizedBox(height: 12),
+          Text(
+            'Tidak ada transaksi',
+            style: AppTextStyles.bodySecondary,
+          ),
+        ],
+      ),
+    );
+  }
+}
