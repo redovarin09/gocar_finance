@@ -56,6 +56,8 @@ class _FormPengeluaranState extends ConsumerState<FormPengeluaran> {
       final today = dateToString(now);
       ref.invalidate(dailySummaryProvider(today));
       ref.invalidate(dailyExpensesProvider(today));
+      ref.invalidate(weeklyDataProvider);
+      ref.invalidate(monthlyDataProvider);
 
       _amountCtrl.clear();
       _noteCtrl.clear();
