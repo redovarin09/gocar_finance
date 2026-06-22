@@ -55,6 +55,8 @@ class _FormPemasukanState extends ConsumerState<FormPemasukan> {
       final today = dateToString(now);
       ref.invalidate(dailySummaryProvider(today));
       ref.invalidate(dailyTripsProvider(today));
+      ref.invalidate(weeklyDataProvider);
+      ref.invalidate(monthlyDataProvider);
 
       _fareCtrl.clear();
       _tipCtrl.clear();

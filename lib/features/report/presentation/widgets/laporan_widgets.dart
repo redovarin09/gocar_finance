@@ -530,7 +530,10 @@ class TabMingguan extends ConsumerWidget {
         final totalNet     = totalIncome - totalExpense;
         final totalTrips   = summaries.fold(0, (s, d) => s + d.tripCount);
 
-        return ListView(
+        return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: () async => ref.invalidate(weeklyDataProvider),
+      child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           children: [
             // Judul minggu
@@ -619,6 +622,7 @@ class TabMingguan extends ConsumerWidget {
           ],
         );
       },
+),
     );
   }
 
@@ -830,7 +834,10 @@ class TabBulanan extends ConsumerWidget {
         final sortedCats = catTotals.entries.toList()
           ..sort((a, b) => b.value.compareTo(a.value));
 
-        return ListView(
+        return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: () async => ref.invalidate(monthlyDataProvider),
+      child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           children: [
             // Header bulan
@@ -1005,6 +1012,7 @@ class TabBulanan extends ConsumerWidget {
           ],
         );
       },
+),
     );
   }
 }
