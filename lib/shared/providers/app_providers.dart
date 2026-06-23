@@ -71,8 +71,10 @@ final weeklyDataProvider = FutureProvider<List<DailySummary>>((ref) async {
   final from = dateToString(now.subtract(const Duration(days: 6)));
   final to   = dateToString(now);
 
-  final trips    = await ref.read(tripRepositoryProvider).getTripsInRange(from, to);
-  final expenses = await ref.read(expenseRepositoryProvider).getExpensesInRange(from, to);
+  final tripRepo    = ref.watch(tripRepositoryProvider);
+  final expenseRepo = ref.watch(expenseRepositoryProvider);
+  final trips    = await tripRepo.getTripsInRange(from, to);
+  final expenses = await expenseRepo.getExpensesInRange(from, to);
 
   final tMap = <String, List<TripModel>>{};
   final eMap = <String, List<ExpenseModel>>{};
@@ -92,8 +94,10 @@ final monthlyDataProvider = FutureProvider<List<DailySummary>>((ref) async {
   final from = dateToString(DateTime(now.year, now.month, 1));
   final to   = dateToString(now);
 
-  final trips    = await ref.read(tripRepositoryProvider).getTripsInRange(from, to);
-  final expenses = await ref.read(expenseRepositoryProvider).getExpensesInRange(from, to);
+  final tripRepo2    = ref.watch(tripRepositoryProvider);
+  final expenseRepo2 = ref.watch(expenseRepositoryProvider);
+  final trips    = await tripRepo2.getTripsInRange(from, to);
+  final expenses = await expenseRepo2.getExpensesInRange(from, to);
 
   final tMap = <String, List<TripModel>>{};
   final eMap = <String, List<ExpenseModel>>{};
