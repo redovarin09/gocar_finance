@@ -5,18 +5,12 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../features/catat/data/models/expense_category.dart';
-import '../../../../features/catat/data/models/trip_model.dart';
 import '../../../../features/catat/data/models/expense_model.dart';
-import '../../../../features/catat/presentation/widgets/edit_trip_sheet.dart';
+import '../../../../features/catat/data/models/trip_model.dart';
 import '../../../../features/catat/presentation/widgets/edit_expense_sheet.dart';
-import '../../../../shared/providers/app_providers.dart';
+import '../../../../features/catat/presentation/widgets/edit_trip_sheet.dart';
 import '../../../../features/dashboard/data/daily_summary.dart';
-import '../../../../features/catat/data/models/trip_model.dart';
-import '../../../../features/catat/data/models/expense_model.dart';
-import '../../../../features/catat/presentation/widgets/edit_trip_sheet.dart';
-import '../../../../features/catat/presentation/widgets/edit_expense_sheet.dart';
-
-
+import '../../../../shared/providers/app_providers.dart';
 
 const _hari  = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
 const _bulan = ['','Jan','Feb','Mar','Apr','Mei',
@@ -45,12 +39,11 @@ class _TabHarianState extends ConsumerState<TabHarian> {
 
   @override
   Widget build(BuildContext context) {
-    final dateStr     = dateToString(_date);
+    final dateStr      = dateToString(_date);
     final summaryAsync = ref.watch(dailySummaryProvider(dateStr));
 
     return Column(
       children: [
-        // Navigasi tanggal
         _DateNavigator(
           date: _date,
           canGoNext: !_isToday,
@@ -62,7 +55,6 @@ class _TabHarianState extends ConsumerState<TabHarian> {
           ),
         ),
         const Divider(height: 1, color: AppColors.divider),
-
         Expanded(
           child: summaryAsync.when(
             loading: () => const Center(
@@ -71,10 +63,10 @@ class _TabHarianState extends ConsumerState<TabHarian> {
             error: (e, _) => Center(
               child: Text('Error: $e', style: AppTextStyles.bodySecondary),
             ),
-            data: (summary) => summary.tripCount == 0 &&
-                    summary.expenses.isEmpty
-                ? _EmptyDay()
-                : _DailyDetail(summary: summary),
+            data: (summary) =>
+                summary.tripCount == 0 && summary.expenses.isEmpty
+                    ? const _EmptyDay()
+                    : _DailyDetail(summary: summary),
           ),
         ),
       ],
@@ -143,8 +135,11 @@ class _DailyDetail extends ConsumerWidget {
         (t) => _TxRow(
           isIncome: true,
           emoji: t.paymentType == 'gopay' ? '📱' : '💵',
-          label: 'Trip (${t.paymentType == 'gopay' ? 'GoPay' : 'Cash'})',
-          sub: t.kmAdded > 0 ? '${t.kmAdded.toStringAsFixed(1)} km' : '',
+          label:
+              'Trip (${t.paymentType == 'gopay' ? 'GoPay' : 'Cash'})',
+          sub: t.kmAdded > 0
+              ? '${t.kmAdded.toStringAsFixed(1)} km'
+              : '',
           amount: t.totalIncome,
           time: t.createdAt,
           trip: t,
@@ -196,10 +191,8 @@ class _DailyDetail extends ConsumerWidget {
     );
   }
 }
-         
-          
 
-// ── Summary Grid (4 kartu) ────────────────────────────────
+// ── Summary Grid ──────────────────────────────────────────
 
 class _SummaryGrid extends StatelessWidget {
   final DailySummary summary;
@@ -209,7 +202,6 @@ class _SummaryGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Net income full-width
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(16),
@@ -256,7 +248,8 @@ class _SummaryGrid extends StatelessWidget {
             Expanded(
               child: _MiniCard(
                 label: '⬆ Pemasukan',
-                value: CurrencyFormatter.formatCompact(summary.totalIncome),
+                value: CurrencyFormatter.formatCompact(
+                    summary.totalIncome),
                 color: AppColors.income,
               ),
             ),
@@ -264,7 +257,8 @@ class _SummaryGrid extends StatelessWidget {
             Expanded(
               child: _MiniCard(
                 label: '⬇ Pengeluaran',
-                value: CurrencyFormatter.formatCompact(summary.totalExpense),
+                value: CurrencyFormatter.formatCompact(
+                    summary.totalExpense),
                 color: AppColors.expense,
               ),
             ),
@@ -295,11 +289,17 @@ class _SummaryGrid extends StatelessWidget {
   }
 }
 
+// ── Mini Card ─────────────────────────────────────────────
+
 class _MiniCard extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
-  const _MiniCard({required this.label, required this.value, required this.color});
+  const _MiniCard({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -329,7 +329,7 @@ class _MiniCard extends StatelessWidget {
   }
 }
 
-// ── Transaction tile ──────────────────────────────────────
+// ── TxRow model ───────────────────────────────────────────
 
 class _TxRow {
   final bool isIncome;
@@ -355,21 +355,28 @@ class _TxRow {
   String get hhmm {
     try {
       final dt = DateTime.parse(time).toLocal();
-      return '${dt.hour.toString().padLeft(2,'0')}:'
-          '${dt.minute.toString().padLeft(2,'0')}';
-    } catch (_) { return ''; }
+      return '${dt.hour.toString().padLeft(2, '0')}:'
+          '${dt.minute.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return '';
+    }
   }
 
   String get date => trip?.date ?? expense?.date ?? '';
-  int? get id => trip?.id ?? expense?.id;
+  int? get id     => trip?.id   ?? expense?.id;
 }
+
+// ── Transaction Tile ──────────────────────────────────────
 
 class _TransactionTile extends StatelessWidget {
   final _TxRow row;
   final bool isLast;
   final WidgetRef ref;
-  const _TransactionTile(
-      {required this.row, required this.isLast, required this.ref});
+  const _TransactionTile({
+    required this.row,
+    required this.isLast,
+    required this.ref,
+  });
 
   Future<void> _delete(BuildContext context) async {
     final confirm = await showDialog<bool>(
@@ -384,8 +391,10 @@ class _TransactionTile extends StatelessWidget {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Hapus',
-                style: TextStyle(color: AppColors.expense)),
+            child: const Text(
+              'Hapus',
+              style: TextStyle(color: AppColors.expense),
+            ),
           ),
         ],
       ),
@@ -412,16 +421,20 @@ class _TransactionTile extends StatelessWidget {
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (_) =>
-            EditTripSheet(trip: row.trip!, onUpdated: () {}),
+        builder: (_) => EditTripSheet(
+          trip: row.trip!,
+          onUpdated: () {},
+        ),
       );
     } else if (row.expense != null) {
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (_) =>
-            EditExpenseSheet(expense: row.expense!, onUpdated: () {}),
+        builder: (_) => EditExpenseSheet(
+          expense: row.expense!,
+          onUpdated: () {},
+        ),
       );
     }
   }
@@ -442,8 +455,11 @@ class _TransactionTile extends StatelessWidget {
           color: AppColors.expense,
           borderRadius: BorderRadius.circular(14),
         ),
-        child: const Icon(Icons.delete_rounded,
-            color: Colors.white, size: 26),
+        child: const Icon(
+          Icons.delete_rounded,
+          color: Colors.white,
+          size: 26,
+        ),
       ),
       child: GestureDetector(
         onTap: () => _edit(context),
@@ -451,7 +467,9 @@ class _TransactionTile extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 12),
+                horizontal: 16,
+                vertical: 12,
+              ),
               child: Row(
                 children: [
                   Text(row.emoji,
@@ -464,13 +482,18 @@ class _TransactionTile extends StatelessWidget {
                         Text(
                           row.label,
                           style: AppTextStyles.body.copyWith(
-                              fontWeight: FontWeight.w500),
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                         if (row.sub.isNotEmpty)
                           Text(row.sub, style: AppTextStyles.caption),
-                        const Text('Tap untuk edit',
-                            style: TextStyle(
-                                fontSize: 10, color: AppColors.textHint)),
+                        const Text(
+                          'Tap untuk edit',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: AppColors.textHint,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -496,16 +519,43 @@ class _TransactionTile extends StatelessWidget {
             ),
             if (!isLast)
               const Divider(
-                  height: 1, indent: 56, color: AppColors.divider),
+                height: 1,
+                indent: 56,
+                color: AppColors.divider,
+              ),
           ],
         ),
       ),
     );
   }
 }
-   
-               
-      
+
+// ── Empty Day ─────────────────────────────────────────────
+
+class _EmptyDay extends StatelessWidget {
+  const _EmptyDay();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.calendar_today_outlined,
+            color: AppColors.textHint,
+            size: 48,
+          ),
+          SizedBox(height: 12),
+          Text(
+            'Tidak ada transaksi',
+            style: AppTextStyles.bodySecondary,
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 // ═══════════════════════════════════════════════════════════
 //  TAB MINGGUAN
@@ -522,36 +572,37 @@ class TabMingguan extends ConsumerWidget {
       loading: () => const Center(
         child: CircularProgressIndicator(color: AppColors.primary),
       ),
-      error: (e, _) =>
-          Center(child: Text('Error: $e', style: AppTextStyles.bodySecondary)),
+      error: (e, _) => Center(
+        child: Text('Error: $e', style: AppTextStyles.bodySecondary),
+      ),
       data: (summaries) {
-        final totalIncome  = summaries.fold(0, (s, d) => s + d.totalIncome);
-        final totalExpense = summaries.fold(0, (s, d) => s + d.totalExpense);
+        final totalIncome  =
+            summaries.fold(0, (s, d) => s + d.totalIncome);
+        final totalExpense =
+            summaries.fold(0, (s, d) => s + d.totalExpense);
         final totalNet     = totalIncome - totalExpense;
-        final totalTrips   = summaries.fold(0, (s, d) => s + d.tripCount);
+        final totalTrips   =
+            summaries.fold(0, (s, d) => s + d.tripCount);
 
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           children: [
-            // Judul minggu
+            Text('7 Hari Terakhir', style: AppTextStyles.h1),
             Text(
-              '7 Hari Terakhir',
-              style: AppTextStyles.h1,
-            ),
-            Text(
-              '${_fmtDate(summaries.first.date)} – ${_fmtDate(summaries.last.date)}',
+              '${_fmtDate(summaries.first.date)} – '
+              '${_fmtDate(summaries.last.date)}',
               style: AppTextStyles.caption,
             ),
             const SizedBox(height: 16),
-
-            // Summary row
             Row(
               children: [
                 Expanded(
                   child: _MiniCard(
                     label: '💰 Net',
                     value: CurrencyFormatter.formatCompact(totalNet),
-                    color: totalNet >= 0 ? AppColors.income : AppColors.expense,
+                    color: totalNet >= 0
+                        ? AppColors.income
+                        : AppColors.expense,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -570,7 +621,8 @@ class TabMingguan extends ConsumerWidget {
                 Expanded(
                   child: _MiniCard(
                     label: '⬆ Pemasukan',
-                    value: CurrencyFormatter.formatCompact(totalIncome),
+                    value:
+                        CurrencyFormatter.formatCompact(totalIncome),
                     color: AppColors.income,
                   ),
                 ),
@@ -578,15 +630,14 @@ class TabMingguan extends ConsumerWidget {
                 Expanded(
                   child: _MiniCard(
                     label: '⬇ Pengeluaran',
-                    value: CurrencyFormatter.formatCompact(totalExpense),
+                    value:
+                        CurrencyFormatter.formatCompact(totalExpense),
                     color: AppColors.expense,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 24),
-
-            // Bar chart
             const Text('Net per Hari', style: AppTextStyles.h2),
             const SizedBox(height: 12),
             Container(
@@ -606,8 +657,6 @@ class TabMingguan extends ConsumerWidget {
               child: _WeeklyBarChart(summaries: summaries),
             ),
             const SizedBox(height: 24),
-
-            // Per-hari list
             const Text('Detail Per Hari', style: AppTextStyles.h2),
             const SizedBox(height: 10),
             ...summaries.reversed.map(
@@ -619,7 +668,6 @@ class TabMingguan extends ConsumerWidget {
           ],
         );
       },
-),
     );
   }
 
@@ -644,8 +692,8 @@ class _WeeklyBarChart extends StatelessWidget {
     final maxVal = summaries
         .map((s) => s.netIncome.abs().toDouble())
         .fold(0.0, (a, b) => a > b ? a : b);
-    final chartMax = maxVal > 0 ? maxVal * 1.3 : 100000.0;
-    final interval = chartMax / 4;
+    final chartMax  = maxVal > 0 ? maxVal * 1.3 : 100000.0;
+    final interval  = chartMax / 4;
 
     return BarChart(
       BarChartData(
@@ -658,8 +706,12 @@ class _WeeklyBarChart extends StatelessWidget {
             x: e.key,
             barRods: [
               BarChartRodData(
-                toY: s.netIncome > 0 ? s.netIncome.toDouble() : 0,
-                color: s.tripCount > 0 ? AppColors.income : AppColors.divider,
+                toY: s.netIncome > 0
+                    ? s.netIncome.toDouble()
+                    : 0,
+                color: s.tripCount > 0
+                    ? AppColors.income
+                    : AppColors.divider,
                 width: 26,
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(6),
@@ -678,7 +730,8 @@ class _WeeklyBarChart extends StatelessWidget {
                   return const SizedBox();
                 }
                 try {
-                  final dt = DateTime.parse(summaries[idx].date);
+                  final dt =
+                      DateTime.parse(summaries[idx].date);
                   return Padding(
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
@@ -700,7 +753,8 @@ class _WeeklyBarChart extends StatelessWidget {
               getTitlesWidget: (value, meta) {
                 if (value == 0) return const SizedBox();
                 return Text(
-                  CurrencyFormatter.formatCompact(value.toInt()),
+                  CurrencyFormatter.formatCompact(
+                      value.toInt()),
                   style: AppTextStyles.caption,
                 );
               },
@@ -737,14 +791,17 @@ class _DayRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     DateTime? dt;
-    try { dt = DateTime.parse(summary.date); } catch (_) {}
+    try {
+      dt = DateTime.parse(summary.date);
+    } catch (_) {}
 
     final dayLabel = dt != null
         ? '${_hari[dt.weekday % 7]}, ${dt.day} ${_bulan[dt.month]}'
         : summary.date;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(
+          horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(12),
@@ -758,9 +815,8 @@ class _DayRow extends StatelessWidget {
               children: [
                 Text(
                   dayLabel,
-                  style: AppTextStyles.body.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: AppTextStyles.body
+                      .copyWith(fontWeight: FontWeight.w600),
                 ),
                 Text(
                   '${summary.tripCount} trip'
@@ -806,22 +862,26 @@ class TabBulanan extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final monthlyAsync = ref.watch(monthlyDataProvider);
-    final now = DateTime.now();
+    final now          = DateTime.now();
 
     return monthlyAsync.when(
       loading: () => const Center(
         child: CircularProgressIndicator(color: AppColors.primary),
       ),
-      error: (e, _) =>
-          Center(child: Text('Error: $e', style: AppTextStyles.bodySecondary)),
+      error: (e, _) => Center(
+        child: Text('Error: $e', style: AppTextStyles.bodySecondary),
+      ),
       data: (summaries) {
-        final totalIncome  = summaries.fold(0, (s, d) => s + d.totalIncome);
-        final totalExpense = summaries.fold(0, (s, d) => s + d.totalExpense);
+        final totalIncome  =
+            summaries.fold(0, (s, d) => s + d.totalIncome);
+        final totalExpense =
+            summaries.fold(0, (s, d) => s + d.totalExpense);
         final netIncome    = totalIncome - totalExpense;
-        final totalTrips   = summaries.fold(0, (s, d) => s + d.tripCount);
-        final totalKm      = summaries.fold(0.0, (s, d) => s + d.totalKm);
+        final totalTrips   =
+            summaries.fold(0, (s, d) => s + d.tripCount);
+        final totalKm      =
+            summaries.fold(0.0, (s, d) => s + d.totalKm);
 
-        // Akumulasi pengeluaran per kategori
         final catTotals = <String, int>{};
         for (final day in summaries) {
           day.expenseByCategory.forEach((k, v) {
@@ -834,7 +894,6 @@ class TabBulanan extends ConsumerWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           children: [
-            // Header bulan
             Text(
               '${_bulan[now.month]} ${now.year}',
               style: AppTextStyles.h1,
@@ -844,8 +903,6 @@ class TabBulanan extends ConsumerWidget {
               style: AppTextStyles.caption,
             ),
             const SizedBox(height: 16),
-
-            // Net income hero
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -862,7 +919,8 @@ class TabBulanan extends ConsumerWidget {
                 children: [
                   const Text(
                     'Net Bulan Ini',
-                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                    style: TextStyle(
+                        color: Colors.white70, fontSize: 13),
                   ),
                   const SizedBox(height: 6),
                   Text(
@@ -878,14 +936,13 @@ class TabBulanan extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 12),
-
-            // Stats grid
             Row(
               children: [
                 Expanded(
                   child: _MiniCard(
                     label: '⬆ Total Masuk',
-                    value: CurrencyFormatter.formatCompact(totalIncome),
+                    value:
+                        CurrencyFormatter.formatCompact(totalIncome),
                     color: AppColors.income,
                   ),
                 ),
@@ -893,7 +950,8 @@ class TabBulanan extends ConsumerWidget {
                 Expanded(
                   child: _MiniCard(
                     label: '⬇ Total Keluar',
-                    value: CurrencyFormatter.formatCompact(totalExpense),
+                    value: CurrencyFormatter.formatCompact(
+                        totalExpense),
                     color: AppColors.expense,
                   ),
                 ),
@@ -919,11 +977,10 @@ class TabBulanan extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 24),
-
-            // Breakdown pengeluaran per kategori
             if (sortedCats.isNotEmpty) ...[
-              const Text('Rincian Pengeluaran', style: AppTextStyles.h2),
+              const SizedBox(height: 24),
+              const Text('Rincian Pengeluaran',
+                  style: AppTextStyles.h2),
               const SizedBox(height: 10),
               Container(
                 decoration: BoxDecoration(
@@ -939,11 +996,13 @@ class TabBulanan extends ConsumerWidget {
                 ),
                 child: Column(
                   children: sortedCats.asMap().entries.map((e) {
-                    final cat = ExpenseCategory.fromName(e.value.key);
+                    final cat =
+                        ExpenseCategory.fromName(e.value.key);
                     final pct = totalExpense > 0
                         ? e.value.value / totalExpense
                         : 0.0;
-                    final isLast = e.key == sortedCats.length - 1;
+                    final isLast =
+                        e.key == sortedCats.length - 1;
                     return Column(
                       children: [
                         Padding(
@@ -955,20 +1014,24 @@ class TabBulanan extends ConsumerWidget {
                                 children: [
                                   Text(
                                     cat.emoji,
-                                    style: const TextStyle(fontSize: 20),
+                                    style: const TextStyle(
+                                        fontSize: 20),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Text(
                                       cat.label,
-                                      style: AppTextStyles.body.copyWith(
-                                        fontWeight: FontWeight.w500,
+                                      style: AppTextStyles.body
+                                          .copyWith(
+                                        fontWeight:
+                                            FontWeight.w500,
                                       ),
                                     ),
                                   ),
                                   Text(
-                                    CurrencyFormatter.formatCompact(
-                                        e.value.value),
+                                    CurrencyFormatter
+                                        .formatCompact(
+                                            e.value.value),
                                     style: const TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.bold,
@@ -979,14 +1042,16 @@ class TabBulanan extends ConsumerWidget {
                               ),
                               const SizedBox(height: 6),
                               ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius:
+                                    BorderRadius.circular(4),
                                 child: LinearProgressIndicator(
                                   value: pct,
                                   minHeight: 6,
-                                  backgroundColor: AppColors.divider,
+                                  backgroundColor:
+                                      AppColors.divider,
                                   valueColor:
-                                      const AlwaysStoppedAnimation<Color>(
-                                          AppColors.expense),
+                                      const AlwaysStoppedAnimation<
+                                          Color>(AppColors.expense),
                                 ),
                               ),
                             ],
@@ -994,9 +1059,10 @@ class TabBulanan extends ConsumerWidget {
                         ),
                         if (!isLast)
                           const Divider(
-                              height: 1,
-                              indent: 16,
-                              color: AppColors.divider),
+                            height: 1,
+                            indent: 16,
+                            color: AppColors.divider,
+                          ),
                       ],
                     );
                   }).toList(),
@@ -1006,32 +1072,6 @@ class TabBulanan extends ConsumerWidget {
           ],
         );
       },
-),
-    );
-  }
-}
-
-class _EmptyDay extends StatelessWidget {
-  const _EmptyDay();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.calendar_today_outlined,
-            color: AppColors.textHint,
-            size: 48,
-          ),
-          SizedBox(height: 12),
-          Text(
-            'Tidak ada transaksi',
-            style: AppTextStyles.bodySecondary,
-          ),
-        ],
-      ),
     );
   }
 }
