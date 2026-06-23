@@ -689,32 +689,38 @@ class _WeeklyBarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final maxVal = summaries
-        .map((s) => s.netIncome.abs().toDouble())
-        .fold(0.0, (a, b) => a > b ? a : b);
-    final chartMax  = maxVal > 0 ? maxVal * 1.3 : 100000.0;
-    final interval  = chartMax / 4;
+    final values   = summaries.map((s) => s.netIncome.toDouble()).toList();
+    final maxVal   = values.fold(0.0, (a, b) => b > a ? b : a);
+    final minVal   = values.fold(0.0, (a, b) => b < a ? b : a);
+    final chartMax = (maxVal > 0 ? maxVal * 1.3 : 100000.0);
+    final chartMin = (minVal < 0 ? minVal * 1.3 : -20000.0);
+    final range    = chartMax - chartMin;
+    final interval = range / 4;
 
     return BarChart(
       BarChartData(
         maxY: chartMax,
-        minY: 0,
+        minY: chartMin,
         alignment: BarChartAlignment.spaceAround,
         barGroups: summaries.asMap().entries.map((e) {
-          final s = e.value;
+          final s   = e.value;
+          final val = s.netIncome.toDouble();
+          final isNeg = val < 0;
           return BarChartGroupData(
             x: e.key,
             barRods: [
               BarChartRodData(
-                toY: s.netIncome > 0
-                    ? s.netIncome.toDouble()
-                    : 0,
-                color: s.tripCount > 0
-                    ? AppColors.income
-                    : AppColors.divider,
+                fromY: isNeg ? val : 0,
+                toY:   isNeg ? 0   : val,
+                color: s.tripCount == 0
+                    ? AppColors.divider
+                    : isNeg
+                        ? AppColors.expense
+                        : AppColors.income,
                 width: 26,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(6),
+                borderRadius: BorderRadius.vertical(
+                  top:    Radius.circular(isNeg ? 0 : 6),
+                  bottom: Radius.circular(isNeg ? 6 : 0),
                 ),
               ),
             ],
