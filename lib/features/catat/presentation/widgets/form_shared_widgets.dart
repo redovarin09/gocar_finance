@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../../core/utils/input_formatters.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_text_styles.dart';
 
@@ -44,37 +45,6 @@ InputDecoration formInputDecoration(String hint, {String? suffix}) {
   );
 }
 
-// ── Rupiah Formatter (format angka jadi 28.000 saat ketik) ─
-
-class RupiahInputFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final digits = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
-    if (digits.isEmpty) return newValue.copyWith(text: '');
-    final amount = int.parse(digits);
-    final formatted = _addDots(amount);
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
-    );
-  }
-
-  String _addDots(int n) {
-    final s = n.toString();
-    final buf = StringBuffer();
-    for (int i = 0; i < s.length; i++) {
-      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
-      buf.write(s[i]);
-    }
-    return buf.toString();
-  }
-}
-
-// ── Rupiah TextField ──────────────────────────────────────
-
 class RupiahTextField extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
@@ -113,7 +83,5 @@ class RupiahTextField extends StatelessWidget {
 
 // ── Helper: parse "28.000" → 28000 ───────────────────────
 
-int parseRupiah(String raw) {
-  final digits = raw.replaceAll(RegExp(r'[^\d]'), '');
-  return int.tryParse(digits) ?? 0;
+int parseRupiah(String raw) => RupiahInputFormatter.parse(raw);
 }
