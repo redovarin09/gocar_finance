@@ -84,4 +84,3 @@ class RupiahTextField extends StatelessWidget {
 // ── Helper: parse "28.000" → 28000 ───────────────────────
 
 int parseRupiah(String raw) => RupiahInputFormatter.parse(raw);
-}
