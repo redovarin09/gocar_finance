@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../../core/utils/input_formatters.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_text_styles.dart';
@@ -527,7 +528,7 @@ class _AddTargetSheetState extends ConsumerState<AddTargetSheet> {
             TextField(
               controller: _bonusCtrl,
               keyboardType: TextInputType.number,
-              inputFormatters: [_RupiahFormatter()],
+              inputFormatters: [RupiahInputFormatter()],
               decoration: _dec('Contoh: 75.000').copyWith(
                 prefixText: 'Rp ',
                 prefixStyle: const TextStyle(
@@ -610,25 +611,4 @@ InputDecoration _dec(String hint) {
   );
 }
 
-class _RupiahFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final digits = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
-    if (digits.isEmpty) return newValue.copyWith(text: '');
-    final n = int.parse(digits);
-    final s = n.toString();
-    final buf = StringBuffer();
-    for (int i = 0; i < s.length; i++) {
-      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
-      buf.write(s[i]);
-    }
-    final formatted = buf.toString();
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
-    );
-  }
-}
+
