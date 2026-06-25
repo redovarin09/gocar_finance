@@ -24,45 +24,43 @@ for filepath in FILES:
     for p, r in COMPILESDK_PATTERNS:
         txt = re.sub(p, r, txt)
 
-    # Kotlin DSL (.kts)
-    if filepath.endswith('.kts'):
-        if 'isCoreLibraryDesugaringEnabled' not in txt:
-            txt = re.sub(
-                r'(compileOptions\s*\{)',
-                r'\1\n        isCoreLibraryDesugaringEnabled = true',
-                txt
-            )
-            print(f'Added isCoreLibraryDesugaringEnabled: {filepath}')
+    is_kts = filepath.endswith('.kts')
 
-        if 'desugar_jdk_libs' not in txt:
-            txt = re.sub(
-                r'(dependencies\s*\{)',
-                r'\1\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")',
-                txt
-            )
-            print(f'Added coreLibraryDesugaring dep: {filepath}')
+    # ── Fix isCoreLibraryDesugaringEnabled ──────────────────
+    desugar_flag    = 'isCoreLibraryDesugaringEnabled' if is_kts \
+                      else 'coreLibraryDesugaringEnabled'
+    desugar_flag_val = 'isCoreLibraryDesugaringEnabled = true' if is_kts \
+                       else 'coreLibraryDesugaringEnabled true'
 
-    # Groovy DSL (.gradle)
-    else:
-        if 'coreLibraryDesugaringEnabled' not in txt:
-            txt = re.sub(
-                r'(compileOptions\s*\{)',
-                r'\1\n        coreLibraryDesugaringEnabled true',
-                txt
-            )
-            print(f'Added coreLibraryDesugaringEnabled: {filepath}')
+    if desugar_flag not in txt:
+        txt = re.sub(
+            r'(compileOptions\s*\{)',
+            rf'\1\n        {desugar_flag_val}',
+            txt
+        )
+        print(f'Added {desugar_flag}: {filepath}')
 
-        if 'desugar_jdk_libs' not in txt:
-            txt = re.sub(
-                r'(dependencies\s*\{)',
-                r"\1\n    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'",
-                txt
+    # ── Fix coreLibraryDesugaring dependency ────────────────
+    # Pakai rfind → target LAST dependencies block (app block)
+    if 'desugar_jdk_libs' not in txt:
+        dep_line = '    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")' \
+                   if is_kts else \
+                   "    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'"
+
+        last_idx = txt.rfind('dependencies {')
+        if last_idx != -1:
+            insert_pos = last_idx + len('dependencies {')
+            txt = (
+                txt[:insert_pos]
+                + '\n' + dep_line
+                + txt[insert_pos:]
             )
-            print(f'Added coreLibraryDesugaring dep: {filepath}')
+            print(f'Added desugar dep to last dependencies block: {filepath}')
+        else:
+            print(f'WARNING: dependencies block not found in {filepath}')
 
     if txt != orig:
         open(filepath, 'w').write(txt)
         print(f'Patched: {filepath}')
     else:
-        lines = [l.strip() for l in txt.splitlines() if 'compileSdk' in l.lower()]
-        print(f'No changes in {filepath}, compileSdk lines: {lines}')
+        print(f'No changes: {filepath}')
