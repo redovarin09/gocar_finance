@@ -5,38 +5,48 @@ for f in ['android/app/build.gradle.kts', 'android/app/build.gradle']:
         print(f'Skip: {f}')
         continue
 
-    txt = open(f).read()
+    txt  = open(f).read()
     is_kts = f.endswith('.kts')
+    orig = txt
 
-    print(f'\n=== {f} ===')
-    for ln in txt.splitlines():
-        if any(k in ln for k in ['compileOptions','dependencies','desugar','coreLibrary','sourceCompat']):
-            print(f'  {ln}')
+    # Print full content untuk debug
+    print(f'\n====== FULL CONTENT: {f} ======')
+    print(txt)
+    print(f'====== END {f} ======')
 
-    # Fix isCoreLibraryDesugaringEnabled
+    # Fix flag
     flag = 'isCoreLibraryDesugaringEnabled'
     if flag not in txt:
         val = 'isCoreLibraryDesugaringEnabled = true' if is_kts \
               else 'coreLibraryDesugaringEnabled true'
-        txt = re.sub(
+        new = re.sub(
             r'(sourceCompatibility\s*[=\s]+JavaVersion\.[A-Z_0-9]+)',
-            rf'{val}\n        \1',
-            txt
+            rf'{val}\n        \1', txt
         )
-        print(f'Added desugar flag')
+        txt = new if new != txt else re.sub(
+            r'(compileOptions\s*\{)',
+            rf'\1\n        {val}', txt
+        )
+        print('Flag added:', flag in txt)
 
-    # Fix dependency
+    # Fix dependency — pakai regex handles semua whitespace
     if 'desugar_jdk_libs' not in txt:
         line = '    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")' \
                if is_kts else \
                "    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'"
-        for pat in ['dependencies {', 'dependencies{']:
-            idx = txt.rfind(pat)
-            if idx != -1:
-                pos = idx + len(pat)
-                txt = txt[:pos] + '\n' + line + txt[pos:]
-                print(f'Added desugar dep')
-                break
 
-    open(f, 'w').write(txt)
-    print(f'Done: {f}')
+        matches = list(re.finditer(r'dependencies\s*\{', txt))
+        print(f'Found {len(matches)} dependencies block(s)')
+        if matches:
+            pos = matches[-1].end()
+            txt = txt[:pos] + '\n' + line + txt[pos:]
+            print('Dep added:', 'desugar_jdk_libs' in txt)
+        else:
+            txt += f'\ndependencies {{\n{line}\n}}\n'
+            print('Appended new dependencies block')
+
+    if txt != orig:
+        open(f,'w').write(txt)
+        print(f'Written: {f}')
+    else:
+        print(f'No changes: {f}')
