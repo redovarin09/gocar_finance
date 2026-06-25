@@ -37,6 +37,7 @@ jobs:
           sed -i \
             's/android:label="gocar_finance"/android:label="GocarFinance"/' \
             android/app/src/main/AndroidManifest.xml
+          sed -i 's|<application|<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>\n    <application|' android/app/src/main/AndroidManifest.xml
 
       - name: Patch compileSdk to 36
         run: python3 scripts/patch_compilesdk.py
