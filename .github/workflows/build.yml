@@ -42,6 +42,67 @@ jobs:
       - name: Patch compileSdk to 36
         run: python3 scripts/patch_compilesdk.py
 
+      - name: Debug & fix desugaring
+              run: |
+                f="android/app/build.gradle.kts"
+                [ -f "$f" ] || f="android/app/build.gradle"
+                echo "=== FILE: $f ==="
+                echo "=== compileOptions section ==="
+                grep -n -A 5 "compileOptions" "$f"
+                echo "=== dependencies section ==="
+                grep -n -A 10 "^dependencies" "$f"
+                echo "=== Adding desugaring ==="
+                python3 - << 'PYEOF'
+      import re
+
+      for f in ['android/app/build.gradle.kts','android/app/build.gradle']:
+          try:
+              txt = open(f).read()
+          except:
+            print(f'Skip {f}')
+              continue
+
+          is_kts = f.endswith('.kts')
+          flag   = 'isCoreLibraryDesugaringEnabled'
+          dep    = 'desugar_jdk_libs'
+
+          # Fix flag in compileOptions
+          if flag not in txt:
+              val = 'isCoreLibraryDesugaringEnabled = true' if is_kts \
+                    else 'coreLibraryDesugaringEnabled true'
+              txt = re.sub(
+                  r'(sourceCompatibility\s*[=\s]+JavaVersion\.[A-Z_0-9]+)',
+                  rf'isCoreLibraryDesugaringEnabled {"=" if is_kts else ""} true\n        \1',
+                  txt
+              )
+              print(f'Added desugar flag: {flag not in txt}')
+
+          # Fix dependency - cari last dependencies block
+          if dep not in txt:
+              line = '    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")' \
+                     if is_kts else \
+                     "    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'"
+
+              # Coba berbagai format dependencies block
+              for pattern in ['dependencies {', 'dependencies{', 'dependencies\n{']:
+                  idx = txt.rfind(pattern)
+                  if idx != -1:
+                      pos = idx + len(pattern)
+                      txt = txt[:pos] + '\n' + line + txt[pos:]
+                      print(f'Added desugar dep after: "{pattern}"')
+                      break
+              else:
+                  print(f'ERROR: dependencies block not found! Appending...')
+                  txt += f'\ndependencies {{\n{line}\n}}\n'
+
+          open(f,'w').write(txt)
+          print(f'Done: {f}')
+          print('=== Verify ===')
+          for ln in txt.splitlines():
+              if any(k in ln for k in ['desugar','coreLibrary','dependencies']):
+                  print(f'  {ln}')
+      PYEOF
+
       - name: Get Flutter dependencies
         run: flutter pub get
 
