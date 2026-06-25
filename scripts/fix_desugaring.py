@@ -31,9 +31,9 @@ for f in ['android/app/build.gradle.kts', 'android/app/build.gradle']:
 
     # Fix dependency — pakai regex handles semua whitespace
     if 'desugar_jdk_libs' not in txt:
-        line = '    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")' \
+        line = '    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.3")' \
                if is_kts else \
-               "    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'"
+               "    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.3'"
 
         matches = list(re.finditer(r'dependencies\s*\{', txt))
         print(f'Found {len(matches)} dependencies block(s)')
