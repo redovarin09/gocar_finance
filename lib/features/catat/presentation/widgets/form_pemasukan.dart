@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/providers/app_providers.dart';
+import '../../../../core/services/notification_service.dart';
 import '../../data/models/trip_model.dart';
 import 'form_shared_widgets.dart';
 
@@ -57,6 +58,18 @@ class _FormPemasukanState extends ConsumerState<FormPemasukan> {
       ref.invalidate(dailyTripsProvider(today));
       ref.invalidate(weeklyDataProvider);
       ref.invalidate(monthlyDataProvider);
+
+      // Cek insentif & kirim notifikasi
+      final targets = await ref
+          .read(incentiveRepositoryProvider)
+          .getTargetsByDate(today);
+      final trips = await ref
+          .read(tripRepositoryProvider)
+          .getTripsByDate(today);
+      await NotificationService.checkInsentif(
+        currentTrips: trips.length,
+        targets: targets,
+      );
 
       _fareCtrl.clear();
       _tipCtrl.clear();
