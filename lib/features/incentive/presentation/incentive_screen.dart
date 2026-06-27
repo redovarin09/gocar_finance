@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../shared/providers/app_providers.dart';
+import '../data/models/incentive_target_model.dart';
 import 'widgets/incentif_widgets.dart';
 
 class InsentifScreen extends ConsumerWidget {
