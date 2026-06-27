@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/services/backup_service.dart';
+import '../../../shared/providers/theme_provider.dart';
 import '../../../shared/providers/app_providers.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -187,6 +188,47 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ]),
 
+          const SizedBox(height: 24),
+
+          // TAMPILAN
+          _SectionHeader(
+              icon: Icons.dark_mode_rounded, title: 'Tampilan'),
+          const SizedBox(height: 8),
+          _SettingsCard(children: [
+            Consumer(
+              builder: (context, ref, _) {
+                final isDark =
+                    ref.watch(themeModeProvider) == ThemeMode.dark;
+                return SwitchListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16),
+                  secondary: Icon(
+                    isDark
+                        ? Icons.dark_mode_rounded
+                        : Icons.light_mode_rounded,
+                    color: isDark
+                        ? AppColors.accent
+                        : AppColors.primary,
+                  ),
+                  title: Text(
+                    isDark ? 'Mode Gelap' : 'Mode Terang',
+                    style: AppTextStyles.body
+                        .copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    isDark
+                        ? 'Nyaman untuk berkendara malam'
+                        : 'Kontras tinggi untuk siang hari',
+                    style: AppTextStyles.caption,
+                  ),
+                  value: isDark,
+                  activeColor: AppColors.accent,
+                  onChanged: (_) =>
+                      ref.read(themeModeProvider.notifier).toggle(),
+                );
+              },
+            ),
+          ]),
           const SizedBox(height: 24),
 
           // INFO APP
