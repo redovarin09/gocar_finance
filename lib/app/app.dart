@@ -48,7 +48,7 @@ class GocarFinanceApp extends ConsumerWidget {
           color: AppColors.textPrimary,
         ),
       ),
-      bottomAppBarTheme: const BottomAppBarTheme(
+      bottomAppBarTheme: const BottomAppBarThemeData(
         color: AppColors.cardBackground,
         elevation: 8,
       ),
@@ -96,7 +96,7 @@ class GocarFinanceApp extends ConsumerWidget {
           color: darkText,
         ),
       ),
-      bottomAppBarTheme: const BottomAppBarTheme(
+      bottomAppBarTheme: const BottomAppBarThemeData(
         color: darkCard,
         elevation: 8,
       ),
@@ -125,7 +125,7 @@ class GocarFinanceApp extends ConsumerWidget {
               color: AppColors.primary, width: 2),
         ),
       ),
-      dialogTheme: DialogTheme(
+      dialogTheme: DialogThemeData(
         backgroundColor: darkCard,
         titleTextStyle: GoogleFonts.poppins(
           fontSize: 17,
