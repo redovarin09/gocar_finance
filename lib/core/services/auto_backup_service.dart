@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/catat/data/repositories/trip_repository.dart';
 import '../../features/catat/data/repositories/expense_repository.dart';
 import '../../features/incentive/data/repositories/incentive_repository.dart';
+import '../../shared/providers/app_providers.dart';
 
 class AutoBackupService {
   static const _kLastBackup = 'last_auto_backup_ms';
