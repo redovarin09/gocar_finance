@@ -11,12 +11,53 @@ class IncentiveRepository {
   }
 
   Future<List<IncentiveTargetModel>> getTargetsByDate(String date) async {
-    final db = await _db.database;
+    final db   = await _db.database;
     final maps = await db.query(
       'incentive_targets',
       where: 'date = ?',
       whereArgs: [date],
       orderBy: 'trip_target ASC',
+    );
+    return maps.map(IncentiveTargetModel.fromMap).toList();
+  }
+
+  /// Ambil target dari tanggal terakhir yang punya data sebelum [date]
+  Future<List<IncentiveTargetModel>> getLastUsedTargets(String date) async {
+    final db   = await _db.database;
+    final rows = await db.rawQuery(
+      'SELECT DISTINCT date FROM incentive_targets '
+      'WHERE date < ? ORDER BY date DESC LIMIT 1',
+      [date],
+    );
+    if (rows.isEmpty) return [];
+    final lastDate = rows.first['date'] as String;
+    return getTargetsByDate(lastDate);
+  }
+
+  /// Copy target dari [fromDate] ke [toDate]
+  Future<void> copyTargetsToDate({
+    required String fromDate,
+    required String toDate,
+  }) async {
+    final sources = await getTargetsByDate(fromDate);
+    for (final t in sources) {
+      await insertTarget(
+        IncentiveTargetModel(
+          date: toDate,
+          tierName: t.tierName,
+          tripTarget: t.tripTarget,
+          bonusAmount: t.bonusAmount,
+          createdAt: DateTime.now().toIso8601String(),
+        ),
+      );
+    }
+  }
+
+  Future<List<IncentiveTargetModel>> getAllTargets() async {
+    final db   = await _db.database;
+    final maps = await db.query(
+      'incentive_targets',
+      orderBy: 'date ASC',
     );
     return maps.map(IncentiveTargetModel.fromMap).toList();
   }
@@ -28,14 +69,5 @@ class IncentiveRepository {
       where: 'id = ?',
       whereArgs: [id],
     );
-  }
-  
-  Future<List<IncentiveTargetModel>> getAllTargets() async {
-    final db = await _db.database;
-    final maps = await db.query(
-      'incentive_targets',
-      orderBy: 'date ASC',
-    );
-    return maps.map(IncentiveTargetModel.fromMap).toList();
   }
 }
