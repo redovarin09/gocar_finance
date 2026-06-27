@@ -109,3 +109,13 @@ final monthlyDataProvider = FutureProvider<List<DailySummary>>((ref) async {
     return DailySummary(date: d, trips: tMap[d] ?? [], expenses: eMap[d] ?? []);
   });
 });
+
+// ── Target terakhir yang pernah dipakai ──────────────────
+
+final lastUsedTargetsProvider =
+    FutureProvider<List<IncentiveTargetModel>>((ref) {
+  final today = dateToString(DateTime.now());
+  return ref
+      .watch(incentiveRepositoryProvider)
+      .getLastUsedTargets(today);
+});
