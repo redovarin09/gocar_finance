@@ -4,6 +4,8 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/services/backup_service.dart';
 import '../../../shared/providers/theme_provider.dart';
+import '../../../core/services/auto_backup_service.dart';
+import 'dart:io';
 import '../../../shared/providers/app_providers.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -156,6 +158,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               isLoading: _isBackingUp,
               onTap: _handleBackup,
             ),
+          ]),
+
+          const SizedBox(height: 24),
+
+          // AUTO BACKUP LOKAL
+          _SectionHeader(
+            icon: Icons.save_rounded,
+            title: 'Backup Otomatis',
+          ),
+          const SizedBox(height: 8),
+          _SettingsCard(children: [
+            _InfoTile(
+              icon: Icons.info_outline_rounded,
+              text: 'Backup otomatis berjalan setiap 24 jam '
+                  'saat app dibuka. File disimpan di storage '
+                  'HP kamu (max 7 file terakhir).',
+            ),
+            const _CardDivider(),
+            _LastBackupTile(isRestoring: _isRestoring),
           ]),
 
           const SizedBox(height: 24),
@@ -407,6 +428,113 @@ class _ResultRow extends StatelessWidget {
           Text('$count $label', style: AppTextStyles.body),
         ],
       ),
+    );
+  }
+}
+
+class _LastBackupTile extends ConsumerStatefulWidget {
+  final bool isRestoring;
+  const _LastBackupTile({required this.isRestoring});
+
+  @override
+  ConsumerState<_LastBackupTile> createState() =>
+      _LastBackupTileState();
+}
+
+class _LastBackupTileState extends ConsumerState<_LastBackupTile> {
+  bool _isRunning = false;
+  String _lastBackupText = 'Memuat...';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLastBackup();
+  }
+
+  Future<void> _loadLastBackup() async {
+    final dt = await AutoBackupService.getLastBackupTime();
+    setState(() {
+      if (dt == null) {
+        _lastBackupText = 'Belum pernah backup';
+      } else {
+        final diff = DateTime.now().difference(dt);
+        if (diff.inMinutes < 60) {
+          _lastBackupText =
+              '${diff.inMinutes} menit yang lalu';
+        } else if (diff.inHours < 24) {
+          _lastBackupText = '${diff.inHours} jam yang lalu';
+        } else {
+          _lastBackupText = '${diff.inDays} hari yang lalu';
+        }
+      }
+    });
+  }
+
+  Future<void> _manualBackup() async {
+    setState(() => _isRunning = true);
+    try {
+      final path = await AutoBackupService.manualBackup(ref);
+      final fileName = path.split('/').last;
+      await _loadLastBackup();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('✅ Backup disimpan: $fileName'),
+          backgroundColor: AppColors.income,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Gagal backup: $e'),
+          backgroundColor: AppColors.expense,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _isRunning = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              const Icon(Icons.history_rounded,
+                  color: AppColors.textSecondary, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Backup Terakhir',
+                        style: AppTextStyles.bodySecondary),
+                    Text(
+                      _lastBackupText,
+                      style: AppTextStyles.body.copyWith(
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const _CardDivider(),
+        _ActionTile(
+          icon: Icons.save_alt_rounded,
+          label: 'Backup Sekarang',
+          sublabel: 'Simpan ke storage HP',
+          color: AppColors.primary,
+          isLoading: _isRunning,
+          onTap: _manualBackup,
+        ),
+      ],
     );
   }
 }
