@@ -3,44 +3,56 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../shared/providers/app_providers.dart';
+import '../../features/catat/data/repositories/trip_repository.dart';
+import '../../features/catat/data/repositories/expense_repository.dart';
+import '../../features/incentive/data/repositories/incentive_repository.dart';
 
 class AutoBackupService {
-  static const _kLastBackup  = 'last_auto_backup_ms';
-  static const _kInterval    = Duration(hours: 24);
-  static const _folderName   = 'GocarFinance_Backups';
-  static const _maxBackups   = 7;
+  static const _kLastBackup = 'last_auto_backup_ms';
+  static const _kInterval   = Duration(hours: 24);
+  static const _folderName  = 'GocarFinance_Backups';
+  static const _maxBackups  = 7;
 
-  // ── Cek & jalankan backup ────────────────────────────────
+  // ── Auto backup (dipanggil dari provider) ────────────────
 
-  static Future<String?> checkAndBackup(Ref ref) async {
+  static Future<String?> checkAndBackup({
+    required TripRepository tripRepo,
+    required ExpenseRepository expenseRepo,
+    required IncentiveRepository incentiveRepo,
+  }) async {
     try {
-      final prefs       = await SharedPreferences.getInstance();
-      final lastMs      = prefs.getInt(_kLastBackup) ?? 0;
-      final lastBackup  = DateTime.fromMillisecondsSinceEpoch(lastMs);
-      final now         = DateTime.now();
+      final prefs      = await SharedPreferences.getInstance();
+      final lastMs     = prefs.getInt(_kLastBackup) ?? 0;
+      final lastBackup = DateTime.fromMillisecondsSinceEpoch(lastMs);
+      final now        = DateTime.now();
 
       if (now.difference(lastBackup) < _kInterval) return null;
 
-      final path = await _doBackup(ref);
-      await prefs.setInt(_kLastBackup, now.millisecondsSinceEpoch);
+      final path = await _doBackup(
+          tripRepo, expenseRepo, incentiveRepo);
+      await prefs.setInt(
+          _kLastBackup, now.millisecondsSinceEpoch);
       return path;
-    } catch (e) {
-      return null; // Gagal silently, tidak ganggu user
+    } catch (_) {
+      return null;
     }
   }
 
-  // ── Backup manual (dari settings) ────────────────────────
+  // ── Manual backup ────────────────────────────────────────
 
-  static Future<String> manualBackup(Ref ref) async {
-    final path  = await _doBackup(ref);
+  static Future<String> manualBackup({
+    required TripRepository tripRepo,
+    required ExpenseRepository expenseRepo,
+    required IncentiveRepository incentiveRepo,
+  }) async {
+    final path  = await _doBackup(tripRepo, expenseRepo, incentiveRepo);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(
         _kLastBackup, DateTime.now().millisecondsSinceEpoch);
     return path;
   }
 
-  // ── Ambil waktu backup terakhir ──────────────────────────
+  // ── Info ─────────────────────────────────────────────────
 
   static Future<DateTime?> getLastBackupTime() async {
     final prefs = await SharedPreferences.getInstance();
@@ -48,8 +60,6 @@ class AutoBackupService {
     if (ms == null || ms == 0) return null;
     return DateTime.fromMillisecondsSinceEpoch(ms);
   }
-
-  // ── Daftar file backup ───────────────────────────────────
 
   static Future<List<File>> getBackupFiles() async {
     final dir = await _getBackupDir();
@@ -64,10 +74,14 @@ class AutoBackupService {
 
   // ── Private ───────────────────────────────────────────────
 
-  static Future<String> _doBackup(Ref ref) async {
-    final trips      = await ref.read(tripRepositoryProvider).getAllTrips();
-    final expenses   = await ref.read(expenseRepositoryProvider).getAllExpenses();
-    final incentives = await ref.read(incentiveRepositoryProvider).getAllTargets();
+  static Future<String> _doBackup(
+    TripRepository tripRepo,
+    ExpenseRepository expenseRepo,
+    IncentiveRepository incentiveRepo,
+  ) async {
+    final trips      = await tripRepo.getAllTrips();
+    final expenses   = await expenseRepo.getAllExpenses();
+    final incentives = await incentiveRepo.getAllTargets();
 
     final backupMap = {
       'version': 1,
@@ -82,30 +96,24 @@ class AutoBackupService {
 
     final jsonStr = const JsonEncoder.withIndent('  ').convert(backupMap);
     final dir     = await _getBackupDir();
-
     if (dir == null) throw Exception('Storage tidak tersedia');
-    await dir.create(recursive: true);
 
-    // Rotasi: hapus backup lama (>7 file)
+    await dir.create(recursive: true);
     await _rotate(dir);
 
-    // Tulis file baru
-    final now     = DateTime.now();
-    final dateTag =
-        '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
-    final file = File('${dir.path}/gocarfinance_$dateTag.json');
+    final now    = DateTime.now();
+    final tag    = '${now.year}'
+        '${now.month.toString().padLeft(2, '0')}'
+        '${now.day.toString().padLeft(2, '0')}';
+    final file   = File('${dir.path}/gocarfinance_$tag.json');
     await file.writeAsString(jsonStr);
     return file.path;
   }
 
   static Future<Directory?> _getBackupDir() async {
     try {
-      // Coba external storage dulu (accessible dari file manager)
       final ext = await getExternalStorageDirectory();
-      if (ext != null) {
-        return Directory('${ext.path}/$_folderName');
-      }
-      // Fallback ke app documents dir
+      if (ext != null) return Directory('${ext.path}/$_folderName');
       final docs = await getApplicationDocumentsDirectory();
       return Directory('${docs.path}/$_folderName');
     } catch (_) {
@@ -121,7 +129,6 @@ class AutoBackupService {
           .where((f) => f.path.endsWith('.json'))
           .toList()
         ..sort((a, b) => b.path.compareTo(a.path));
-
       for (int i = _maxBackups; i < files.length; i++) {
         await files[i].delete();
       }
@@ -131,7 +138,10 @@ class AutoBackupService {
 
 // ── Provider ──────────────────────────────────────────────
 
-/// Berjalan sekali per sesi app (bukan auto-dispose)
 final autoBackupSessionProvider = FutureProvider<String?>((ref) {
-  return AutoBackupService.checkAndBackup(ref);
+  return AutoBackupService.checkAndBackup(
+    tripRepo:      ref.read(tripRepositoryProvider),
+    expenseRepo:   ref.read(expenseRepositoryProvider),
+    incentiveRepo: ref.read(incentiveRepositoryProvider),
+  );
 });

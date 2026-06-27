@@ -473,7 +473,11 @@ class _LastBackupTileState extends ConsumerState<_LastBackupTile> {
   Future<void> _manualBackup() async {
     setState(() => _isRunning = true);
     try {
-      final path = await AutoBackupService.manualBackup(ref);
+      final path = await AutoBackupService.manualBackup(
+        tripRepo:      ref.read(tripRepositoryProvider),
+        expenseRepo:   ref.read(expenseRepositoryProvider),
+        incentiveRepo: ref.read(incentiveRepositoryProvider),
+      );
       final fileName = path.split('/').last;
       await _loadLastBackup();
       if (mounted) {
