@@ -79,10 +79,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     try {
       final result = await ref.read(backupServiceProvider).restoreFromJson(jsonStr);
 
-      ref.invalidate(dailySummaryProvider);
-      ref.invalidate(dailyTripsProvider);
-      ref.invalidate(dailyExpensesProvider);
-      ref.invalidate(incentiveTargetsProvider);
+      // Family providers butuh parameter tanggal
+      final today = dateToString(DateTime.now());
+      ref.invalidate(dailySummaryProvider(today));
+      ref.invalidate(dailyTripsProvider(today));
+      ref.invalidate(dailyExpensesProvider(today));
+      ref.invalidate(incentiveTargetsProvider(today));
       ref.invalidate(weeklyDataProvider);
       ref.invalidate(monthlyDataProvider);
 
