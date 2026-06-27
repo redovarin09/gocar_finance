@@ -78,7 +78,15 @@ class TripCountBanner extends StatelessWidget {
 
 class EmptyTargets extends StatelessWidget {
   final VoidCallback onAdd;
-  const EmptyTargets({super.key, required this.onAdd});
+  final VoidCallback? onCopy;
+  final int lastTargetCount;
+
+  const EmptyTargets({
+    super.key,
+    required this.onAdd,
+    this.onCopy,
+    this.lastTargetCount = 0,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -95,31 +103,58 @@ class EmptyTargets extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Belum Ada Target Insentif',
+              'Belum Ada Target Hari Ini',
               style: AppTextStyles.h2,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             const Text(
-              'Tambahkan target trip harian dari\naplikasi GoCar kamu.',
+              'Tambahkan target dari GoCar,\natau salin dari hari terakhir.',
               style: AppTextStyles.bodySecondary,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: onAdd,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+            if (onCopy != null) ...[
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: onCopy,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accent,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(Icons.copy_rounded, size: 20),
+                  label: Text(
+                    'Salin $lastTargetCount Target dari Kemarin',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
                 ),
-                minimumSize: const Size(200, 52),
               ),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text(
-                'Tambah Target',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              const SizedBox(height: 12),
+            ],
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: OutlinedButton.icon(
+                onPressed: onAdd,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.add_rounded),
+                label: const Text(
+                  'Tambah Target Baru',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 15),
+                ),
               ),
             ),
           ],
@@ -128,6 +163,7 @@ class EmptyTargets extends StatelessWidget {
     );
   }
 }
+
 
 // ═══════════════════════════════════════════════
 //  TIER CARD — Dismissible (swipe kiri = hapus)
