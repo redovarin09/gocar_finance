@@ -37,15 +37,25 @@ jobs:
           sed -i \
             's/android:label="gocar_finance"/android:label="GocarFinance"/' \
             android/app/src/main/AndroidManifest.xml
-          sed -i 's|<application|<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>\n    <application|' android/app/src/main/AndroidManifest.xml
-
-      - name: Patch compileSdk to 36
-        run: python3 scripts/patch_compilesdk.py
+          sed -i 's|<application|<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>\n    <application|' \
+            android/app/src/main/AndroidManifest.xml
 
       - name: Patch compileSdk and desugaring
         run: |
           python3 scripts/patch_compilesdk.py
           python3 scripts/fix_desugaring.py
+          python3 scripts/setup_signing.py
+
+      - name: Setup keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_FILE }}" | base64 --decode \
+            > android/app/gocar_finance.jks
+          cat > android/key.properties << 'EOF'
+          storePassword=${{ secrets.STORE_PASSWORD }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          storeFile=gocar_finance.jks
+          EOF
 
       - name: Get Flutter dependencies
         run: flutter pub get
@@ -56,8 +66,7 @@ jobs:
           pip install pillow --quiet
 
       - name: Generate App Icon
-        run: |
-          python3 scripts/gen_icon.py
+        run: python3 scripts/gen_icon.py
 
       - name: Generate Launcher Icons
         run: dart run flutter_launcher_icons
@@ -65,7 +74,7 @@ jobs:
       - name: Generate Splash Screen
         run: dart run flutter_native_splash:create
 
-      - name: Build Release APK
+      - name: Build Release APK (Signed)
         run: flutter build apk --release
 
       - name: Upload Release APK
