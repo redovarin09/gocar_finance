@@ -6,55 +6,55 @@ if not os.path.exists(f):
     exit()
 
 txt = open(f).read()
+print('=== Original buildTypes area ===')
+for i, ln in enumerate(txt.splitlines(), 1):
+    if any(k in ln for k in ['buildTypes','signingConfig','release','debug']):
+        print(f'  {i}: {ln}')
 
-# 1. Tambah import di baris PERTAMA (wajib untuk Kotlin DSL)
+# Step 1: Import di baris pertama
 if 'import java.util.Properties' not in txt:
-    txt = 'import java.util.Properties\n\n' + txt
-    print('Added import java.util.Properties')
+    txt = 'import java.util.Properties\n' + txt
+    print('Added import')
 
-# 2. Key reader — pakai Properties() tanpa java.util. prefix
-key_reader = '''
-// Load keystore
-val keyPropertiesFile = rootProject.file("key.properties")
-val keyProperties = Properties()
-if (keyPropertiesFile.exists()) {
-    keyProperties.load(keyPropertiesFile.reader())
-}
-
-'''
-
-# Sisipkan setelah plugins block
+# Step 2: Key reader setelah plugins block
 if 'keyPropertiesFile' not in txt:
+    key_reader = (
+        '\nval keyPropertiesFile = rootProject.file("key.properties")\n'
+        'val keyProperties = Properties()\n'
+        'if (keyPropertiesFile.exists()) {\n'
+        '    keyProperties.load(keyPropertiesFile.reader())\n'
+        '}\n'
+    )
+    # Sisipkan setelah baris plugins { ... }
     txt = re.sub(
-        r'(plugins\s*\{[^}]*\}\s*\n)',
+        r'(plugins\s*\{[^}]*\})',
         r'\1' + key_reader,
         txt, count=1
     )
     print('Added key reader')
 
-# 3. signingConfigs block
-signing_config = '''
-    signingConfigs {
-        create("release") {
-            keyAlias     = keyProperties["keyAlias"] as String? ?: ""
-            keyPassword  = keyProperties["keyPassword"] as String? ?: ""
-            storeFile    = keyProperties["storeFile"]?.let { file(it as String) }
-            storePassword = keyProperties["storePassword"] as String? ?: ""
-        }
-    }
-
-'''
-
+# Step 3: signingConfigs INSIDE android{} BEFORE buildTypes
 if 'signingConfigs' not in txt:
+    signing = (
+        '\n    signingConfigs {\n'
+        '        create("release") {\n'
+        '            keyAlias     = keyProperties["keyAlias"] as String? ?: ""\n'
+        '            keyPassword  = keyProperties["keyPassword"] as String? ?: ""\n'
+        '            storeFile    = keyProperties["storeFile"]?.let { file(it as String) }\n'
+        '            storePassword = keyProperties["storePassword"] as String? ?: ""\n'
+        '        }\n'
+        '    }\n'
+    )
+    # Cari buildTypes di dalam android block
     txt = re.sub(
-        r'(\s*buildTypes\s*\{)',
-        signing_config + r'\1',
+        r'(\n    buildTypes\s*\{)',
+        signing + r'\1',
         txt, count=1
     )
-    print('Added signingConfigs')
+    print('Added signingConfigs before buildTypes')
 
-# 4. debug → release
-count = txt.count('signingConfig = signingConfigs.getByName("debug")')
+# Step 4: Ganti debug -> release
+count = txt.count('getByName("debug")')
 txt = txt.replace(
     'signingConfig = signingConfigs.getByName("debug")',
     'signingConfig = signingConfigs.getByName("release")'
@@ -62,4 +62,9 @@ txt = txt.replace(
 print(f'Replaced {count} debug → release')
 
 open(f, 'w').write(txt)
+
+print('\n=== Final result ===')
+for i, ln in enumerate(txt.splitlines(), 1):
+    if any(k in ln for k in ['signingConfig','signingConfigs','keyAlias','storeFile','keyProp']):
+        print(f'  {i}: {ln}')
 print('Done')
