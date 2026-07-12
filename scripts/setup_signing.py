@@ -34,7 +34,7 @@ if 'keyPropertiesFile' not in txt:
     print('Added key reader')
 
 # Step 3: signingConfigs INSIDE android{} BEFORE buildTypes
-if 'signingConfigs' not in txt:
+if 'signingConfigs {' not in txt and 'signingConfigs{' not in txt:
     signing = (
         '\n    signingConfigs {\n'
         '        create("release") {\n'
