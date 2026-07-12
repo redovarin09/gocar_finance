@@ -20,6 +20,7 @@ class _FormPemasukanState extends ConsumerState<FormPemasukan> {
   final _tipCtrl  = TextEditingController();
   final _kmCtrl   = TextEditingController();
   String _paymentType = 'gopay';
+  DateTime _selectedDate = DateTime.now();
   bool _isSaving = false;
 
   @override
@@ -41,7 +42,7 @@ class _FormPemasukanState extends ConsumerState<FormPemasukan> {
     try {
       final now = DateTime.now();
       final trip = TripModel(
-        date: dateToString(now),
+        date: dateToString(_selectedDate),
         fare: fare,
         paymentType: _paymentType,
         tip: parseRupiah(_tipCtrl.text),
@@ -54,10 +55,14 @@ class _FormPemasukanState extends ConsumerState<FormPemasukan> {
       await ref.read(tripRepositoryProvider).insertTrip(trip);
 
       final today = dateToString(now);
-      ref.invalidate(dailySummaryProvider(today));
-      ref.invalidate(dailyTripsProvider(today));
+      final savedDate = dateToString(_selectedDate);
+      ref.invalidate(dailySummaryProvider(savedDate));
+      ref.invalidate(dailyTripsProvider(savedDate));
       ref.invalidate(weeklyDataProvider);
       ref.invalidate(monthlyDataProvider);
+      if (savedDate != today) {
+        ref.invalidate(dailySummaryProvider(today));
+      }
 
       // Cek insentif & kirim notifikasi
       final targets = await ref
@@ -102,6 +107,14 @@ class _FormPemasukanState extends ConsumerState<FormPemasukan> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const FormSectionLabel('📅 Tanggal'),
+          const SizedBox(height: 8),
+          DatePickerField(
+            selectedDate: _selectedDate,
+            onChanged: (d) => setState(() => _selectedDate = d),
+          ),
+          const SizedBox(height: 20),
+
           const FormSectionLabel('💰 Nominal Fare (setelah potongan GoJek)'),
           const SizedBox(height: 8),
           RupiahTextField(

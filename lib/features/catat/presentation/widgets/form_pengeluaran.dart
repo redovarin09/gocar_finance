@@ -18,6 +18,7 @@ class _FormPengeluaranState extends ConsumerState<FormPengeluaran> {
   final _amountCtrl = TextEditingController();
   final _noteCtrl   = TextEditingController();
   ExpenseCategory _category = ExpenseCategory.bensin;
+  DateTime _selectedDate = DateTime.now();
   bool _isSaving = false;
 
   @override
@@ -42,7 +43,7 @@ class _FormPengeluaranState extends ConsumerState<FormPengeluaran> {
     try {
       final now = DateTime.now();
       final expense = ExpenseModel(
-        date: dateToString(now),
+        date: dateToString(_selectedDate),
         category: _category.name,
         amount: amount,
         note: _noteCtrl.text.trim().isEmpty
@@ -54,10 +55,14 @@ class _FormPengeluaranState extends ConsumerState<FormPengeluaran> {
       await ref.read(expenseRepositoryProvider).insertExpense(expense);
 
       final today = dateToString(now);
-      ref.invalidate(dailySummaryProvider(today));
-      ref.invalidate(dailyExpensesProvider(today));
+      final savedDate = dateToString(_selectedDate);
+      ref.invalidate(dailySummaryProvider(savedDate));
+      ref.invalidate(dailyExpensesProvider(savedDate));
       ref.invalidate(weeklyDataProvider);
       ref.invalidate(monthlyDataProvider);
+      if (savedDate != today) {
+        ref.invalidate(dailySummaryProvider(today));
+      }
 
       _amountCtrl.clear();
       _noteCtrl.clear();
@@ -92,6 +97,14 @@ class _FormPengeluaranState extends ConsumerState<FormPengeluaran> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const FormSectionLabel('📅 Tanggal'),
+          const SizedBox(height: 8),
+          DatePickerField(
+            selectedDate: _selectedDate,
+            onChanged: (d) => setState(() => _selectedDate = d),
+          ),
+          const SizedBox(height: 20),
+
           const FormSectionLabel('📂 Kategori Pengeluaran'),
           const SizedBox(height: 10),
           _CategoryGrid(
