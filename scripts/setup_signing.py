@@ -6,27 +6,28 @@ if not os.path.exists(f):
     exit()
 
 txt = open(f).read()
-print('=== Before fix ===')
-for i, ln in enumerate(txt.splitlines(), 1):
-    if any(k in ln for k in ['signingConfig', 'signing', 'debug']):
-        print(f'  {i}: {ln}')
 
-# Tambah key.properties reader sebelum android {
+# Key reader - pakai .reader() bukan FileInputStream
 key_reader = '''
-// Load keystore properties
+// Load keystore
 val keyPropertiesFile = rootProject.file("key.properties")
 val keyProperties = java.util.Properties()
 if (keyPropertiesFile.exists()) {
-    keyProperties.load(java.io.FileInputStream(keyPropertiesFile))
+    keyProperties.load(keyPropertiesFile.reader())
 }
 
 '''
 
+# Sisipkan SETELAH plugins block (bukan di awal file)
 if 'keyPropertiesFile' not in txt:
-    txt = key_reader + txt
-    print('Added key.properties reader')
+    txt = re.sub(
+        r'(plugins\s*\{[^}]*\}\s*\n)',
+        r'\1' + key_reader,
+        txt, count=1
+    )
+    print('Added key reader after plugins block')
 
-# Tambah signingConfigs block sebelum buildTypes
+# Tambah signingConfigs
 signing_config = '''
     signingConfigs {
         create("release") {
@@ -47,17 +48,13 @@ if 'signingConfigs' not in txt:
     )
     print('Added signingConfigs block')
 
-# Ganti SEMUA signingConfig debug → release
-old_debug = 'signingConfig = signingConfigs.getByName("debug")'
-new_release = 'signingConfig = signingConfigs.getByName("release")'
-
-count = txt.count(old_debug)
-txt = txt.replace(old_debug, new_release)
-print(f'Replaced {count} debug signingConfig → release')
+# Ganti debug → release
+count = txt.count('signingConfig = signingConfigs.getByName("debug")')
+txt = txt.replace(
+    'signingConfig = signingConfigs.getByName("debug")',
+    'signingConfig = signingConfigs.getByName("release")'
+)
+print(f'Replaced {count} debug → release')
 
 open(f, 'w').write(txt)
-print('=== After fix ===')
-for i, ln in enumerate(txt.splitlines(), 1):
-    if any(k in ln for k in ['signingConfig', 'keyAlias', 'storeFile']):
-        print(f'  {i}: {ln}')
 print('Done')
