@@ -3,15 +3,36 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/constants/app_colors.dart';
 import '../shared/providers/theme_provider.dart';
+import '../features/onboarding/presentation/onboarding_screen.dart';
 import 'router.dart';
 
 class GocarFinanceApp extends ConsumerWidget {
-  const GocarFinanceApp({super.key});
+  final bool showOnboarding;
+  const GocarFinanceApp({super.key, this.showOnboarding = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router    = ref.watch(routerProvider);
     final themeMode = ref.watch(themeModeProvider);
+
+    if (showOnboarding) {
+      return MaterialApp(
+        title: 'GocarFinance',
+        debugShowCheckedModeBanner: false,
+        themeMode: themeMode,
+        theme:     _buildLightTheme(),
+        darkTheme: _buildDarkTheme(),
+        home: OnboardingScreen(
+          onFinished: () {
+            runApp(
+              ProviderScope(
+                child: GocarFinanceApp(showOnboarding: false),
+              ),
+            );
+          },
+        ),
+      );
+    }
 
     return MaterialApp.router(
       title: 'GocarFinance',
