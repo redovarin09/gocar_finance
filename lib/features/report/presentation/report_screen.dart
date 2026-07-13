@@ -66,19 +66,31 @@ class _LaporanScreenState extends ConsumerState<LaporanScreen>
     try {
       final tab   = _tabController.index;
       final today = dateToString(DateTime.now());
+      bool success = false;
 
       if (tab == 0) {
         final summary =
             await ref.read(dailySummaryProvider(today).future);
-        await ExportService.shareHarian(summary);
+        success = await ExportService.shareHarian(summary);
       } else if (tab == 1) {
         final summaries = await ref.read(weeklyDataProvider.future);
-        await ExportService.shareMingguan(summaries);
+        success = await ExportService.shareMingguan(summaries);
       } else {
         final summaries = await ref.read(
           monthlyDataProvider(_selectedMonth).future,
         );
-        await ExportService.shareBulanan(summaries, _selectedMonth);
+        success =
+            await ExportService.shareBulanan(summaries, _selectedMonth);
+      }
+
+      if (!success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tidak ada data untuk diekspor'),
+            backgroundColor: AppColors.warning,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {

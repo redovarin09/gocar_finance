@@ -16,17 +16,31 @@ abstract final class ExportService {
 
   // ── FORMAT & SHARE ──────────────────────────────────────
 
-  static Future<void> shareHarian(DailySummary summary) async {
+  static Future<bool> shareHarian(DailySummary summary) async {
+    if (summary.tripCount == 0 && summary.expenses.isEmpty) {
+      return false;
+    }
     await Share.share(_formatHarian(summary));
+    return true;
   }
 
-  static Future<void> shareMingguan(List<DailySummary> summaries) async {
+  static Future<bool> shareMingguan(List<DailySummary> summaries) async {
+    final hasData = summaries.any(
+      (s) => s.tripCount > 0 || s.expenses.isNotEmpty,
+    );
+    if (!hasData) return false;
     await Share.share(_formatMingguan(summaries));
+    return true;
   }
 
-  static Future<void> shareBulanan(
+  static Future<bool> shareBulanan(
       List<DailySummary> summaries, DateTime bulan) async {
+    final hasData = summaries.any(
+      (s) => s.tripCount > 0 || s.expenses.isNotEmpty,
+    );
+    if (!hasData) return false;
     await Share.share(_formatBulanan(summaries, bulan));
+    return true;
   }
 
   // ── TEMPLATE HARIAN ─────────────────────────────────────
