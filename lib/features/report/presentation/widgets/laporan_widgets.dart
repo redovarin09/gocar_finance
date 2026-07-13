@@ -973,6 +973,11 @@ class TabBulanan extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 12),
+            if (isCurrent) _EstimasiCard(
+              summaries: summaries,
+              today: now,
+            ),
+            if (isCurrent) const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
@@ -1109,6 +1114,109 @@ class TabBulanan extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+}
+
+// -- Estimasi Card ------------------------------------------------------
+
+class _EstimasiCard extends StatelessWidget {
+  final List<DailySummary> summaries;
+  final DateTime today;
+
+  const _EstimasiCard({
+    required this.summaries,
+    required this.today,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final activeDays = summaries.where(
+      (d) => d.tripCount > 0 || d.expenses.isNotEmpty,
+    ).length;
+
+    if (activeDays == 0) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.insights_rounded,
+                color: AppColors.textHint, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Belum cukup data untuk estimasi bulan ini',
+                style: AppTextStyles.bodySecondary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final totalNet = summaries.fold(
+      0, (s, d) => s + d.netIncome,
+    );
+    final avgPerDay = totalNet / activeDays;
+
+    final daysInMonth =
+        DateTime(today.year, today.month + 1, 0).day;
+    final estimasiAkhirBulan = (avgPerDay * daysInMonth).round();
+
+    final isPositive = estimasiAkhirBulan >= 0;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.accentLight,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.accent.withOpacity(0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.insights_rounded,
+                  color: AppColors.accent, size: 20),
+              const SizedBox(width: 8),
+              const Text(
+                'Estimasi Akhir Bulan',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.accent,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            CurrencyFormatter.format(estimasiAkhirBulan),
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: isPositive
+                  ? AppColors.textPrimary
+                  : AppColors.expense,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Berdasarkan rata-rata $activeDays hari aktif '
+            '(${CurrencyFormatter.formatCompact(avgPerDay.round())}/hari)',
+            style: AppTextStyles.caption,
+          ),
+        ],
+      ),
     );
   }
 }
