@@ -74,7 +74,7 @@ class _EditTripSheetState extends ConsumerState<EditTripSheet> {
       ref.invalidate(dailySummaryProvider(d));
       ref.invalidate(dailyTripsProvider(d));
       ref.invalidate(weeklyDataProvider);
-      ref.invalidate(monthlyDataProvider);
+      ref.invalidate(monthlyDataProvider(DateTime.now()));
       widget.onUpdated();
       if (mounted) Navigator.of(context).pop();
     } catch (e) {

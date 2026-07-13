@@ -90,10 +90,15 @@ final weeklyDataProvider = FutureProvider<List<DailySummary>>((ref) async {
 
 // ── Laporan: bulan ini ────────────────────────────────────
 
-final monthlyDataProvider = FutureProvider<List<DailySummary>>((ref) async {
-  final now  = DateTime.now();
-  final from = dateToString(DateTime(now.year, now.month, 1));
-  final to   = dateToString(now);
+final monthlyDataProvider =
+    FutureProvider.family<List<DailySummary>, DateTime>((ref, month) async {
+  final now       = DateTime.now();
+  final isCurrent = month.year == now.year && month.month == now.month;
+  final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
+  final lastDay     = isCurrent ? now.day : daysInMonth;
+
+  final from = dateToString(DateTime(month.year, month.month, 1));
+  final to   = dateToString(DateTime(month.year, month.month, lastDay));
 
   final tripRepo2    = ref.watch(tripRepositoryProvider);
   final expenseRepo2 = ref.watch(expenseRepositoryProvider);
@@ -105,8 +110,8 @@ final monthlyDataProvider = FutureProvider<List<DailySummary>>((ref) async {
   for (final t in trips)    tMap.putIfAbsent(t.date, () => []).add(t);
   for (final e in expenses) eMap.putIfAbsent(e.date, () => []).add(e);
 
-  return List.generate(now.day, (i) {
-    final d = dateToString(DateTime(now.year, now.month, i + 1));
+  return List.generate(lastDay, (i) {
+    final d = dateToString(DateTime(month.year, month.month, i + 1));
     return DailySummary(date: d, trips: tMap[d] ?? [], expenses: eMap[d] ?? []);
   });
 });

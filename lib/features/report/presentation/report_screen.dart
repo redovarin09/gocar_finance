@@ -17,6 +17,12 @@ class _LaporanScreenState extends ConsumerState<LaporanScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isExporting = false;
+  DateTime _selectedMonth = DateTime.now();
+
+  static const _bulan = [
+    '','Jan','Feb','Mar','Apr','Mei',
+    'Jun','Jul','Agu','Sep','Okt','Nov','Des'
+  ];
 
   @override
   void initState() {
@@ -30,26 +36,49 @@ class _LaporanScreenState extends ConsumerState<LaporanScreen>
     super.dispose();
   }
 
+  bool get _isCurrentMonth {
+    final now = DateTime.now();
+    return _selectedMonth.year == now.year &&
+        _selectedMonth.month == now.month;
+  }
+
+  void _prevMonth() {
+    setState(() {
+      _selectedMonth = DateTime(
+        _selectedMonth.year,
+        _selectedMonth.month - 1,
+      );
+    });
+  }
+
+  void _nextMonth() {
+    if (_isCurrentMonth) return;
+    setState(() {
+      _selectedMonth = DateTime(
+        _selectedMonth.year,
+        _selectedMonth.month + 1,
+      );
+    });
+  }
+
   Future<void> _handleExport() async {
     setState(() => _isExporting = true);
     try {
-      final tab = _tabController.index;
+      final tab   = _tabController.index;
       final today = dateToString(DateTime.now());
 
       if (tab == 0) {
-        // Harian
         final summary =
             await ref.read(dailySummaryProvider(today).future);
         await ExportService.shareHarian(summary);
       } else if (tab == 1) {
-        // Mingguan
         final summaries = await ref.read(weeklyDataProvider.future);
         await ExportService.shareMingguan(summaries);
       } else {
-        // Bulanan
-        final summaries =
-            await ref.read(monthlyDataProvider.future);
-        await ExportService.shareBulanan(summaries, DateTime.now());
+        final summaries = await ref.read(
+          monthlyDataProvider(_selectedMonth).future,
+        );
+        await ExportService.shareBulanan(summaries, _selectedMonth);
       }
     } catch (e) {
       if (mounted) {
@@ -72,7 +101,6 @@ class _LaporanScreenState extends ConsumerState<LaporanScreen>
       appBar: AppBar(
         title: const Text('Laporan'),
         actions: [
-          // Export
           IconButton(
             icon: _isExporting
                 ? const SizedBox(
@@ -88,14 +116,13 @@ class _LaporanScreenState extends ConsumerState<LaporanScreen>
             tooltip: 'Export ke WhatsApp',
             onPressed: _isExporting ? null : _handleExport,
           ),
-          // Refresh
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             color: AppColors.textSecondary,
             tooltip: 'Refresh data',
             onPressed: () {
               ref.invalidate(weeklyDataProvider);
-              ref.invalidate(monthlyDataProvider);
+              ref.invalidate(monthlyDataProvider(_selectedMonth));
               final today = dateToString(DateTime.now());
               ref.invalidate(dailySummaryProvider(today));
             },
@@ -107,6 +134,7 @@ class _LaporanScreenState extends ConsumerState<LaporanScreen>
           unselectedLabelColor: AppColors.textSecondary,
           indicatorColor: AppColors.primary,
           labelStyle: AppTextStyles.label,
+          onTap: (_) => setState(() {}),
           tabs: const [
             Tab(text: 'Harian'),
             Tab(text: 'Mingguan'),
@@ -116,10 +144,75 @@ class _LaporanScreenState extends ConsumerState<LaporanScreen>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: const [
-          TabHarian(),
-          TabMingguan(),
-          TabBulanan(),
+        children: [
+          const TabHarian(),
+          const TabMingguan(),
+          Column(
+            children: [
+              _MonthNavigator(
+                month: _selectedMonth,
+                canGoNext: !_isCurrentMonth,
+                onPrev: _prevMonth,
+                onNext: _nextMonth,
+              ),
+              const Divider(height: 1, color: AppColors.divider),
+              Expanded(
+                child: TabBulanan(month: _selectedMonth),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// -- Month Navigator ---------------------------------------------------------
+
+class _MonthNavigator extends StatelessWidget {
+  final DateTime month;
+  final bool canGoNext;
+  final VoidCallback onPrev;
+  final VoidCallback onNext;
+
+  const _MonthNavigator({
+    required this.month,
+    required this.canGoNext,
+    required this.onPrev,
+    required this.onNext,
+  });
+
+  static const _bulan = [
+    '','Januari','Februari','Maret','April','Mei','Juni',
+    'Juli','Agustus','September','Oktober','November','Desember'
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left_rounded, size: 28),
+            color: AppColors.textPrimary,
+            onPressed: onPrev,
+          ),
+          Expanded(
+            child: Text(
+              '${_bulan[month.month]} ${month.year}',
+              style: AppTextStyles.h2,
+              textAlign: TextAlign.center,
+            ),
+          ),
+          IconButton(
+            icon: Icon(
+              Icons.chevron_right_rounded,
+              size: 28,
+              color: canGoNext ? AppColors.textPrimary : AppColors.textHint,
+            ),
+            onPressed: canGoNext ? onNext : null,
+          ),
         ],
       ),
     );

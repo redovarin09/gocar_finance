@@ -86,7 +86,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ref.invalidate(dailyExpensesProvider(today));
       ref.invalidate(incentiveTargetsProvider(today));
       ref.invalidate(weeklyDataProvider);
-      ref.invalidate(monthlyDataProvider);
+      ref.invalidate(monthlyDataProvider(DateTime.now()));
 
       if (mounted) {
         await showDialog(

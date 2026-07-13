@@ -597,7 +597,7 @@ class _DismissibleTile extends ConsumerWidget {
     ref.invalidate(dailyTripsProvider(item.date));
     ref.invalidate(dailyExpensesProvider(item.date));
     ref.invalidate(weeklyDataProvider);
-    ref.invalidate(monthlyDataProvider);
+    ref.invalidate(monthlyDataProvider(DateTime.now()));
   }
 
   void _edit(BuildContext context, WidgetRef ref) {

@@ -70,7 +70,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
       ref.invalidate(dailySummaryProvider(d));
       ref.invalidate(dailyExpensesProvider(d));
       ref.invalidate(weeklyDataProvider);
-      ref.invalidate(monthlyDataProvider);
+      ref.invalidate(monthlyDataProvider(DateTime.now()));
       widget.onUpdated();
       if (mounted) Navigator.of(context).pop();
     } catch (e) {

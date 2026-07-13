@@ -412,7 +412,7 @@ class _TransactionTile extends StatelessWidget {
     ref.invalidate(dailyTripsProvider(row.date));
     ref.invalidate(dailyExpensesProvider(row.date));
     ref.invalidate(weeklyDataProvider);
-    ref.invalidate(monthlyDataProvider);
+    ref.invalidate(monthlyDataProvider(DateTime.now()));
   }
 
   void _edit(BuildContext context) {
@@ -863,12 +863,19 @@ class _DayRow extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════
 
 class TabBulanan extends ConsumerWidget {
-  const TabBulanan({super.key});
+  final DateTime month;
+  const TabBulanan({super.key, required this.month});
+
+  static const _bulanNama = [
+    '','Januari','Februari','Maret','April','Mei','Juni',
+    'Juli','Agustus','September','Oktober','November','Desember'
+  ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final monthlyAsync = ref.watch(monthlyDataProvider);
+    final monthlyAsync = ref.watch(monthlyDataProvider(month));
     final now          = DateTime.now();
+    final isCurrent     = month.year == now.year && month.month == now.month;
 
     return monthlyAsync.when(
       loading: () => const Center(
@@ -901,11 +908,13 @@ class TabBulanan extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           children: [
             Text(
-              '${_bulan[now.month]} ${now.year}',
+              '${_bulanNama[month.month]} ${month.year}',
               style: AppTextStyles.h1,
             ),
             Text(
-              '${now.day} hari berjalan',
+              isCurrent
+                  ? '${now.day} hari berjalan'
+                  : '${summaries.length} hari (bulan penuh)',
               style: AppTextStyles.caption,
             ),
             const SizedBox(height: 16),
@@ -923,9 +932,9 @@ class TabBulanan extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Net Bulan Ini',
-                    style: TextStyle(
+                  Text(
+                    isCurrent ? 'Net Bulan Ini' : 'Net Bulan Ini',
+                    style: const TextStyle(
                         color: Colors.white70, fontSize: 13),
                   ),
                   const SizedBox(height: 6),
