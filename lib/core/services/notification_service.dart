@@ -45,6 +45,7 @@ class NotificationService {
     _initialized = true;
   }
 
+
   // ── Cek & Kirim Notifikasi ────────────────────────────────
 
   static Future<void> checkInsentif({
@@ -132,5 +133,19 @@ class NotificationService {
 
   static Future<void> cancelAll() async {
     await _plugin.cancelAll();
+  }
+
+  // -- Cancel notifikasi terkait target tertentu ----------------------------
+
+  static Future<void> cancelForTarget(int targetId) async {
+    await _plugin.cancel(targetId);
+    await _plugin.cancel(targetId + 1000);
+    await _plugin.cancel(targetId + 2000);
+  }
+
+  static Future<void> cancelForTargets(List<int> targetIds) async {
+    for (final id in targetIds) {
+      await cancelForTarget(id);
+    }
   }
 }
