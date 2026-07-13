@@ -6,6 +6,7 @@ import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../features/catat/data/models/expense_category.dart';
 import '../../../../features/catat/data/models/expense_model.dart';
+import '../../../../core/services/notification_service.dart';
 import '../../../../features/catat/data/models/trip_model.dart';
 import '../../../../features/catat/presentation/widgets/edit_expense_sheet.dart';
 import '../../../../features/catat/presentation/widgets/edit_trip_sheet.dart';
@@ -413,6 +414,27 @@ class _TransactionTile extends StatelessWidget {
     ref.invalidate(dailyExpensesProvider(row.date));
     ref.invalidate(weeklyDataProvider);
     ref.invalidate(monthlyDataProvider(DateTime.now()));
+
+    // Trip dihapus -> re-check notifikasi insentif untuk hari itu
+    if (row.trip != null) {
+      final newTrips = await ref
+          .read(tripRepositoryProvider)
+          .getTripsByDate(row.date);
+      final targets = await ref
+          .read(incentiveRepositoryProvider)
+          .getTargetsByDate(row.date);
+
+      for (final t in targets) {
+        if (t.id != null) {
+          await NotificationService.cancelForTarget(t.id!);
+        }
+      }
+
+      await NotificationService.checkInsentif(
+        currentTrips: newTrips.length,
+        targets: targets,
+      );
+    }
   }
 
   void _edit(BuildContext context) {

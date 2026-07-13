@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/services/notification_service.dart';
 import '../../../../shared/providers/app_providers.dart';
 import '../../../../features/incentive/data/models/incentive_target_model.dart';
 import '../../data/daily_summary.dart';
@@ -598,6 +599,29 @@ class _DismissibleTile extends ConsumerWidget {
     ref.invalidate(dailyExpensesProvider(item.date));
     ref.invalidate(weeklyDataProvider);
     ref.invalidate(monthlyDataProvider(DateTime.now()));
+
+    // Trip dihapus -> re-check notifikasi insentif untuk hari itu
+    if (item.trip != null) {
+      final newTrips = await ref
+          .read(tripRepositoryProvider)
+          .getTripsByDate(item.date);
+      final targets = await ref
+          .read(incentiveRepositoryProvider)
+          .getTargetsByDate(item.date);
+
+      // Cancel semua notif lama dulu, biar tidak ada yang salah
+      for (final t in targets) {
+        if (t.id != null) {
+          await NotificationService.cancelForTarget(t.id!);
+        }
+      }
+
+      // Re-check dengan trip count baru
+      await NotificationService.checkInsentif(
+        currentTrips: newTrips.length,
+        targets: targets,
+      );
+    }
   }
 
   void _edit(BuildContext context, WidgetRef ref) {
