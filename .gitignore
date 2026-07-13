@@ -16,3 +16,11 @@ gradlew.bat
 *.iml
 .DS_Store
 
+
+# --- Keystore & Signing Security (WAJIB) ---
+*.jks
+*.keystore
+*.p12
+key.properties
+key_b64.txt
+android/key.properties
