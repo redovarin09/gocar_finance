@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../shared/providers/app_providers.dart';
-import '../../../core/services/auto_backup_service.dart';
 import 'widgets/dashboard_widgets.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -26,8 +25,6 @@ class DashboardScreen extends ConsumerWidget {
     final today       = dateToString(DateTime.now());
     final summaryAsync = ref.watch(dailySummaryProvider(today));
 
-    // Auto-backup harian (berjalan di background)
-    ref.watch(autoBackupSessionProvider);
 
     return Scaffold(
       appBar: AppBar(

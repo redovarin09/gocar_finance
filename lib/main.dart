@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/app.dart';
 import 'core/services/notification_service.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
+import 'shared/providers/app_providers.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -10,8 +11,12 @@ void main() async {
 
   final onboardingDone = await isOnboardingDone();
 
+  final container = ProviderContainer();
+  container.read(autoBackupSessionProvider);
+
   runApp(
-    ProviderScope(
+    UncontrolledProviderScope(
+      container: container,
       child: GocarFinanceApp(showOnboarding: !onboardingDone),
     ),
   );

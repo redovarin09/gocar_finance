@@ -7,6 +7,7 @@ import '../../features/catat/data/repositories/expense_repository.dart';
 import '../../features/incentive/data/models/incentive_target_model.dart';
 import '../../features/incentive/data/repositories/incentive_repository.dart';
 import '../../features/dashboard/data/daily_summary.dart';
+import '../../core/services/auto_backup_service.dart';
 
 // ── Helper ────────────────────────────────────────────────
 
@@ -118,4 +119,16 @@ final lastUsedTargetsProvider =
   return ref
       .watch(incentiveRepositoryProvider)
       .getLastUsedTargets(today);
+});
+
+// -- Auto backup session --------------------------------------------------
+
+final autoBackupSessionProvider = FutureProvider<String?>((ref) {
+  // keepAlive: provider tidak di-dispose saat widget rebuild
+  ref.keepAlive();
+  return AutoBackupService.checkAndBackup(
+    tripRepo:      ref.read(tripRepositoryProvider),
+    expenseRepo:   ref.read(expenseRepositoryProvider),
+    incentiveRepo: ref.read(incentiveRepositoryProvider),
+  );
 });
