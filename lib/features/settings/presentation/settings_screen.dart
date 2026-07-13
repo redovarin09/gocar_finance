@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/services/backup_service.dart';
 import '../../../shared/providers/theme_provider.dart';
 import '../../../core/services/auto_backup_service.dart';
-import 'dart:io';
 import '../../../shared/providers/app_providers.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -164,6 +164,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           const SizedBox(height: 24),
 
+          // RIWAYAT
+          _SectionHeader(icon: Icons.history_rounded, title: 'Riwayat Trip'),
+          const SizedBox(height: 8),
+          _SettingsCard(children: [
+            _ActionTile(
+              icon: Icons.calendar_month_rounded,
+              label: 'Lihat Riwayat Trip',
+              sublabel: 'Riwayat transaksi lebih dari 7 hari terakhir',
+              color: AppColors.primary,
+              onTap: () => context.push('/riwayat'),
+                isLoading: false,
+            ),
+          ]),
+
+          const SizedBox(height: 24),
+
           // AUTO BACKUP LOKAL
           _SectionHeader(
             icon: Icons.save_rounded,
@@ -245,7 +261,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     style: AppTextStyles.caption,
                   ),
                   value: isDark,
-                  activeColor: AppColors.accent,
+                  activeThumbColor: AppColors.accent,
                   onChanged: (_) =>
                       ref.read(themeModeProvider.notifier).toggle(),
                 );
@@ -645,7 +661,7 @@ class _ActionTile extends StatelessWidget {
         width: 44,
         height: 44,
         decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
+          color: color.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(11),
         ),
         child: isLoading
