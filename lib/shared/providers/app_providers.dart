@@ -67,6 +67,27 @@ final incentiveTargetsProvider =
 
 // ── Laporan: 7 hari terakhir ─────────────────────────────
 
+final trend30DaysProvider = FutureProvider<List<DailySummary>>((ref) async {
+  final now  = DateTime.now();
+  final from = dateToString(now.subtract(const Duration(days: 29)));
+  final to   = dateToString(now);
+
+  final tripRepo    = ref.watch(tripRepositoryProvider);
+  final expenseRepo = ref.watch(expenseRepositoryProvider);
+  final trips    = await tripRepo.getTripsInRange(from, to);
+  final expenses = await expenseRepo.getExpensesInRange(from, to);
+
+  final tMap = <String, List<TripModel>>{};
+  final eMap = <String, List<ExpenseModel>>{};
+  for (final t in trips)    tMap.putIfAbsent(t.date, () => []).add(t);
+  for (final e in expenses) eMap.putIfAbsent(e.date, () => []).add(e);
+
+  return List.generate(30, (i) {
+    final d = dateToString(now.subtract(Duration(days: 29 - i)));
+    return DailySummary(date: d, trips: tMap[d] ?? [], expenses: eMap[d] ?? []);
+  });
+});
+
 final weeklyDataProvider = FutureProvider<List<DailySummary>>((ref) async {
   final now  = DateTime.now();
   final from = dateToString(now.subtract(const Duration(days: 6)));
@@ -136,4 +157,45 @@ final autoBackupSessionProvider = FutureProvider<String?>((ref) {
     expenseRepo:   ref.read(expenseRepositoryProvider),
     incentiveRepo: ref.read(incentiveRepositoryProvider),
   );
+});
+
+// -- Riwayat: custom date range --------------------------------------------
+
+class DateRangeParam {
+  final String from;
+  final String to;
+  const DateRangeParam({required this.from, required this.to});
+
+  @override
+  bool operator ==(Object other) =>
+      other is DateRangeParam && other.from == from && other.to == to;
+
+  @override
+  int get hashCode => Object.hash(from, to);
+}
+
+final riwayatProvider =
+    FutureProvider.family<List<DailySummary>, DateRangeParam>(
+        (ref, range) async {
+  final tripRepo    = ref.watch(tripRepositoryProvider);
+  final expenseRepo = ref.watch(expenseRepositoryProvider);
+
+  final trips    = await tripRepo.getTripsInRange(range.from, range.to);
+  final expenses = await expenseRepo.getExpensesInRange(range.from, range.to);
+
+  final tMap = <String, List<TripModel>>{};
+  final eMap = <String, List<ExpenseModel>>{};
+  for (final t in trips)    tMap.putIfAbsent(t.date, () => []).add(t);
+  for (final e in expenses) eMap.putIfAbsent(e.date, () => []).add(e);
+
+  final allDates = <String>{...tMap.keys, ...eMap.keys}.toList()
+    ..sort((a, b) => b.compareTo(a)); // terbaru dulu
+
+  return allDates.map((d) {
+    return DailySummary(
+      date: d,
+      trips: tMap[d] ?? [],
+      expenses: eMap[d] ?? [],
+    );
+  }).toList();
 });

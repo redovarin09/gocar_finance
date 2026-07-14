@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../shared/providers/app_providers.dart';
 import 'widgets/dashboard_widgets.dart';
+import 'widgets/trend_chart_card.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -77,6 +78,8 @@ class DashboardScreen extends ConsumerWidget {
             children: [
               HeroIncomeCard(summary: summary),
               const SizedBox(height: 16),
+              const TrendChartCard(),
+              const SizedBox(height: 24),
               StatsRow(summary: summary),
               const SizedBox(height: 24),
               InsentifSection(date: today, tripCount: summary.tripCount),

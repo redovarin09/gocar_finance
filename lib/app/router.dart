@@ -6,6 +6,7 @@ import '../features/catat/presentation/catat_screen.dart';
 import '../features/incentive/presentation/incentive_screen.dart';
 import '../features/report/presentation/report_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
+import '../features/riwayat/presentation/riwayat_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -38,6 +39,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/riwayat',
+        builder: (context, state) => const RiwayatScreen(),
       ),
     ],
   );
